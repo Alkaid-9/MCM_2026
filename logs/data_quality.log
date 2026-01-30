@@ -1,0 +1,7 @@
+[PASSED] Null Check - celebrity_name: 发现 0 个空值
+[PASSED] Null Check - season: 发现 0 个空值
+[PASSED] Null Check - week_num: 发现 0 个空值
+[PASSED] Null Check - raw_score: 发现 0 个空值
+[PASSED] Score Range Check: 发现 0 行分数超出范围 [0, 15.0]
+[PASSED] Survival Logic Check: 发现 0 条逻辑冲突：选手淘汰后依然有得分记录
+[PASSED] Season Completeness: 预期 34 个赛季，实际观测到 34 个
