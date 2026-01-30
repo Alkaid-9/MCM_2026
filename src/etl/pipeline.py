@@ -1,103 +1,93 @@
-# ==============================================================================
-# src/etl/pipeline.py
-# Role: Stage 1 Pipeline Orchestrator (The Industrial Assembly Line)
-# Function: Sequential execution of parsing, transformation, factor building, and auditing
-# ==============================================================================
+"""
+MCM 2026 Problem C: ETL Stage Orchestrator (The Industrial Assembly Line)
+Role: Sequential execution of data loading, parsing, transformation, factor building, and auditing.
+Standard: O-Prize Quality / Production-Grade Robustness.
+"""
 
 import logging
-import sys
-import os
 import pandas as pd
-
-# 导入所有自研组件
 from src.etl.config_loader import ConfigLoader
 from src.etl.loader import DataLoader
 from src.etl.parsers import TextParser
-from src.etl.transformers import DataTransformer, run_transformations
-from src.etl.feature_factory import FeatureFactory, calculate_historical_partner_alpha
+from src.etl.transformers import run_transform_pipeline
 from src.etl.validators import DataValidator
+from src.etl.feature_factory import FeatureFactory
 
 
-def run_etl_stage():
+def run_etl_stage() -> pd.DataFrame:
     """
-    Stage 1 全流程总控：
-    1. Bronze -> 清洗与解析
-    2. 物理变换 (Wide to Long)
-    3. 统计对齐 (Robust Normalization)
-    4. 因子生成 (Partner Alpha, Momentum)
-    5. 质量审计 (Logical Validation)
-    6. 持久化存储 (Silver & Gold)
+    Stage 1 全流程调度：从 Bronze (原始数据) 生产出 Gold (因子库)。
+
+    流水线工序：
+    1. Extraction: 加载强类型原始数据。
+    2. Parsing: 执行文本解析与异常校正（处理 Week 110 等脏数据）。
+    3. Transformation: 维度变换、评委映射、Robust Z-Score 去通胀。
+    4. Auditing: 逻辑一致性红线审计（失败则熔断）。
+    5. Factor Engineering: 生成 Alpha 因子与归因特征。
+    6. Persistence: 保存 Silver (清洗后) 与 Gold (因子库) 数据。
     """
-    logging.info("=" * 60)
-    logging.info("STAGE 1: 启动全流程数据处理流水线 (Bronze -> Silver -> Gold)")
-    logging.info("=" * 60)
+    logger = logging.getLogger("ETL_PIPELINE")
+    logger.info("=" * 80)
+    logger.info(">>> STAGE 1 启动: 数据基建与黄金因子库构建 <<<")
+    logger.info("=" * 80)
 
     try:
-        # --- 1. 数据提取 (Extraction) ---
-        logging.info("[Step 1/8] 正在提取 Bronze 层原始数据...")
-        df_raw = DataLoader.load_bronze_data()
+        # 实例化组件
+        loader = DataLoader()
+        parser = TextParser()
+        factory = FeatureFactory()
 
-        # --- 2. 文本逻辑解析 (Parsing) ---
-        logging.info("[Step 2/8] 执行文本解析与字符串归一化...")
-        df_parsed = TextParser.parse_results_column(df_raw)
-        df_parsed = TextParser.standardize_strings(df_parsed)
+        # --- STEP 1: 数据提取 (Bronze Layer) ---
+        logger.info("[Step 1/6] 正在提取 Bronze 原始数据...")
+        df_bronze = loader.load_bronze_data()
 
-        # --- 3. 核心维度变换 (Transformation) ---
-        logging.info("[Step 3/8] 执行长短表变换及统计标准化 (Robust Z-Score)...")
-        # 调用 transformers.py 中的集成函数
-        df_silver = run_transformations(df_parsed)
-        # 增加周度聚合分 (反演引擎必需)
-        df_silver = DataTransformer.generate_aggregates(df_silver)
+        # --- STEP 2: 文本解析与清洗 (Refining) ---
+        logger.info("[Step 2/6] 执行实体标准化与生存标签解析...")
+        df_parsed = parser.standardize_entities(df_bronze)
+        df_parsed = parser.parse_survival_labels(df_parsed)
 
-        # --- 4. 自动化审计 (Silver Audit) ---
-        logging.info("[Step 4/8] 启动 Silver 层逻辑一致性审计...")
+        # --- STEP 3: 核心统计变换 (Transformation) ---
+        logger.info("[Step 3/6] 执行 Wide-to-Long 变换与单集标准化 (去通胀)...")
+        # 这里调用了我们在 transformers.py 中重构的高级流水线
+        df_silver = run_transform_pipeline(df_parsed)
+
+        # --- STEP 4: 数据质量红线审计 (Validation) ---
+        logger.info("[Step 4/6] 启动逻辑一致性红线审计 (Silver Layer Audit)...")
         validator = DataValidator(df_silver)
         if not validator.run_all():
-            logging.warning("!!! Silver 层审计未通过，请检查日志 !!!")
-        else:
-            logging.info("Silver 层审计通过。")
+            logger.critical("❌ 数据审计未通过！检测到逻辑冲突，Pipeline 强制熔断。")
+            raise ValueError("Data Integrity Violation in Silver Layer.")
 
-        # --- 5. 持久化 Silver 数据 (Persistence) ---
-        DataLoader.save_to_silver(df_silver)
+        # 保存 Silver 层数据（清洗完成，待因子化）
+        loader.save_processed_data(df_silver, layer='silver')
 
-        # --- 6. 因子计算 (Alpha Factory) ---
-        logging.info("[Step 6/8] 启动特征工厂：计算 Partner Alpha 与 行业溢价...")
-        # 计算舞伴历史胜率因子
-        df_with_alpha = calculate_historical_partner_alpha(df_silver)
+        # --- STEP 5: 高阶因子构建 (Alpha Generation) ---
+        logger.info("[Step 5/6] 正在构建黄金因子库 (Partner Alpha, Momentum, SHAP Features)...")
+        # 物理意义：将统计信号转化为因果特征
+        df_gold = factory.generate_gold_library(df_silver)
 
-        # --- 7. 构建黄金因子库 (Gold Layer) ---
-        logging.info("[Step 7/8] 正在构建黄金因子库 (Gold Layer)...")
-        # 生成动量因子、行业哑变量、竞争环境因子
-        df_gold = FeatureFactory.generate_gold_library(df_with_alpha)
+        # --- STEP 6: 数据持久化 (Gold Layer) ---
+        logger.info("[Step 6/6] 正在将黄金因子库持久化至磁盘...")
+        loader.save_processed_data(df_gold, layer='gold')
 
-        # --- 8. 持久化 Gold 数据 ---
-        gold_path = ConfigLoader.get_path('gold_data')
-        os.makedirs(os.path.dirname(gold_path), exist_ok=True)
-        df_gold.to_csv(gold_path, index=False)
-        logging.info(f"[Step 8/8] 黄金因子库已保存至: {gold_path}")
-
-        logging.info("=" * 60)
-        logging.info("STAGE 1 任务成功结束！数据地基已固若金汤。")
-        logging.info(f"Silver 观测点: {len(df_silver)} | Gold 因子数: {len(df_gold.columns)}")
-        logging.info("=" * 60)
+        logger.info("=" * 80)
+        logger.info(f"✅ STAGE 1 成功结束！")
+        logger.info(f"   最终观测点数量: {len(df_gold)}")
+        logger.info(f"   特征总维度: {df_gold.shape[1]}")
+        logger.info(f"   输出路径: {ConfigLoader().get_path('gold_factors')}")
+        logger.info("=" * 80)
 
         return df_gold
 
     except Exception as e:
-        logging.error(f"FATAL: ETL Pipeline 在 Stage 1 发生不可逆溃败!")
-        logging.error(f"错误报告: {str(e)}")
-        # 抛出异常供 main.py 捕获，或直接熔断
+        logger.critical(f"💥 ETL 阶段发生致命崩溃: {str(e)}", exc_info=True)
         raise
 
 
-# ------------------------------------------------------------------------------
-# 脚本入口 (用于单元测试)
-# ------------------------------------------------------------------------------
 if __name__ == "__main__":
-    # 配置基础控制台日志
+    # 配置根日志
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        handlers=[logging.StreamHandler(sys.stdout)]
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     run_etl_stage()

@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/MCM_2026.iml" filepath="$PROJECT_DIR$/.idea/MCM_2026.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/MCM_2026_Core_Engine.iml" filepath="$PROJECT_DIR$/.idea/MCM_2026_Core_Engine.iml" />
     </modules>
   </component>
 </project>

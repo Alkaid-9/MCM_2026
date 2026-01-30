@@ -1,8 +1,7 @@
-# ==============================================================================
-# src/etl/feature_factory.py
-# Role: Factor Library Architect (The Alpha Generator)
-# Function: Creating high-dimensional features with robust index alignment
-# ==============================================================================
+"""
+MCM 2026 Problem C: Strategic Factor Library (The Alpha Generator)
+Role: Constructing high-dimensional features for causal attribution and Bayesian priors.
+"""
 
 import pandas as pd
 import numpy as np
@@ -12,99 +11,136 @@ from src.etl.config_loader import ConfigLoader
 
 class FeatureFactory:
     """
-    因子工厂：负责构建静态特征（行业、年龄）与动态特征（动量、环境因子）。
-    采用 .transform() 机制确保计算结果与原 DataFrame 索引完美对齐。
+    因子工厂：负责构建静态特征（行业、年龄）与动态表现因子。
+    设计准则：
+    1. 索引对齐：强制使用 .transform() 确保因子直接合并回原始面板数据。
+    2. 信号分离：分离‘技术实力’(Beta)与‘身份红利’(Alpha)。
+    3. 鲁棒性：处理冷启动问题（如第一周无动量数据）。
     """
 
-    @staticmethod
-    def build_celebrity_factors(df: pd.DataFrame) -> pd.DataFrame:
-        """
-        构建明星静态特征的 Dummy 变量。
-        """
-        logging.info("正在构建 Celebrity 静态因子 (Dummies)...")
+    def __init__(self):
+        self.cfg = ConfigLoader()
+        self.logger = logging.getLogger("FEATURE_FACTORY")
 
-        # 针对 Task 3：分析行业背景（运动员、歌手等）的潜在票数溢价
-        # 使用 pd.get_dummies 转换类别变量
-        # 强制转换为 int (0/1) 以确保后续算法层（如 XGBoost）的数值兼容性
-        cols_to_dummy = ['industry_group', 'age_group']
-        df = pd.get_dummies(df, columns=cols_to_dummy, prefix=['ind', 'age'], dtype=int)
+    def build_celebrity_static_factors(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        构建明星静态背景因子。
+        物理意义：捕捉不同身份背景自带的‘流量池’差异。
+        """
+        self.logger.info("正在提取明星背景特征 (Industry & Age)...")
+
+        # 1. 行业映射 (从 rules.yaml 获取语义映射)
+        mapping = self.cfg._config['features']['industry_mapping']
+        df['industry_group'] = df['celebrity_industry'].map(mapping).fillna('Baseline')
+
+        # 2. 年龄分段 (代际偏好分析)
+        age_cfg = self.cfg._config['features']['age_segmentation']
+        df['age_group'] = pd.cut(
+            df['celebrity_age_during_season'],
+            bins=age_cfg['bins'],
+            labels=age_cfg['labels']
+        )
+
+        # 3. 转换为 Dummy 变量 (为 Task 3 的线性模型和 XGBoost 做准备)
+        # 注意：这里我们保留原列，同时生成辅助 Dummy
+        df = pd.get_dummies(df, columns=['industry_group', 'age_group'], prefix=['ind', 'age'], drop_first=False)
 
         return df
 
-    @staticmethod
-    def build_performance_dynamics(df: pd.DataFrame) -> pd.DataFrame:
+    def build_performance_dynamics(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        构建表现动力学因子：进步动量与累计声望。
-        物理意义：捕捉观众对‘黑马成长型’选手的心理偏好。
+        构建表现动力学因子。
+        物理意义：观众不仅看分数高低，更看重‘成长性’(Underdog Story)。
         """
-        logging.info("正在构建动态表现因子 (Momentum Logic)...")
+        self.logger.info("正在计算表现动量因子 (Momentum Logic)...")
 
-        # 预排序是关键，确保 diff() 和 expanding() 的物理时间顺序正确
-        # 但注意：transform 会自动将结果映射回原始索引，无惧排序
-        df_sorted = df.sort_values(['celebrity_name', 'season', 'week_num'])
+        # 确保时序正确
+        df = df.sort_values(['celebrity_name', 'season', 'week_num'])
 
-        # 1. 进步动量 (Week-over-Week improvement)
-        # 计算当前周均分相对于上一周的增量
+        # 1. 技术进步动量 (Score Momentum)
+        # 计算当周均分与上一周的差值
         df['score_delta'] = df.groupby(['celebrity_name', 'season'])['week_avg_score'].transform(lambda x: x.diff())
 
-        # 2. 累计表现 (Expanding Mean)
-        # 反映选手的历史口碑积累，排除单场失误的噪音
-        df['cum_score_avg'] = df.groupby(['celebrity_name', 'season'])['week_avg_score'].transform(
-            lambda x: x.expanding().mean())
+        # 2. 累计声望 (Cumulative Reputation)
+        # 反映观众对该选手形成的长线技术认知，消除单周失误噪音
+        df['cum_avg_score'] = df.groupby(['celebrity_name', 'season'])['week_avg_score'].transform(
+            lambda x: x.expanding().mean()
+        )
+
+        # 3. 稳定性因子 (Volatility)
+        # 评委分波动大的选手更具话题性
+        df['score_volatility'] = df.groupby(['celebrity_name', 'season'])['week_avg_score'].transform(
+            lambda x: x.expanding().std()
+        ).fillna(0)
 
         return df
 
-    @staticmethod
-    def build_contextual_factors(df: pd.DataFrame) -> pd.DataFrame:
+    def build_contextual_factors(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        构建赛场环境变量：竞争强度与技术排名。
+        构建赛场环境变量。
+        物理意义：同样的 8 分，在高手如云的周次和菜鸡互啄的周次，吸粉能力完全不同。
         """
-        logging.info("正在构建竞争环境因子...")
+        self.logger.info("正在计算竞争环境因子...")
 
-        # 1. 竞争烈度：计算当季当周还有多少选手存活
-        # 物理意义：竞争人数越少，边际得票难度越大
+        # 1. 相对排名位置 (Relative Technical Rank)
+        # 当周技术分在所有存活选手中的百分比排名
+        df['relative_rank'] = df.groupby(['season', 'week_num'])['week_avg_score'].transform(
+            lambda x: x.rank(pct=True)
+        )
+
+        # 2. 存活压力因子 (Survival Pressure)
+        # 剩余选手越少，边际竞争越激烈
         df['n_competitors'] = df.groupby(['season', 'week_num'])['celebrity_name'].transform('nunique')
 
-        # 2. 相对技术位置 (Relative Percentile Rank)
-        # 物理意义：选手在当周技术分榜单中的百分比排名
-        df['relative_technical_rank'] = df.groupby(['season', 'week_num'])['week_avg_score'].transform(
-            lambda x: x.rank(pct=True))
+        return df
+
+    def build_partner_alpha(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        构建舞伴历史红利因子 (Pro-Partner Alpha)。
+        学术价值：顶刊极其看重这种“名师出高徒”的内生性问题。
+        """
+        self.logger.info("正在量化舞伴历史红利 (Partner Alpha)...")
+
+        # 计算专业舞伴在所有赛季带队的历史中位排名 (Placement)
+        # 物理意义：衡量这个舞伴是否有‘化腐朽为神奇’的能力
+        partner_stats = df.groupby('ballroom_partner')['placement'].transform('mean')
+
+        # 归一化：排名越小 Alpha 越高
+        df['partner_alpha'] = 1.0 / (partner_stats + 1e-9)
 
         return df
 
-    @classmethod
-    def generate_gold_library(cls, df: pd.DataFrame) -> pd.DataFrame:
+    def generate_gold_library(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        一键执行所有因子构建逻辑，产出 Gold 层因子库。
+        一键合成黄金因子库。
         """
-        # 注意逻辑顺序：先算动态因子（依赖原始分），再转 Dummy（会改变列结构）
-        df = cls.build_performance_dynamics(df)
-        df = cls.build_contextual_factors(df)
-        df = cls.build_celebrity_factors(df)
+        df = self.build_celebrity_static_factors(df)
+        df = self.build_performance_dynamics(df)
+        df = self.build_contextual_factors(df)
+        df = self.build_partner_alpha(df)
 
-        # 填补计算产生的初始 NaN (例如第一周没有 delta)
-        # 填充为 0 符合物理意义：第一周没有“进步幅度”
+        # 最终填充 NaN (如第一周无 delta)
         df = df.fillna(0)
 
-        logging.info(f"黄金因子库构建完成。特征维度: {df.shape}")
+        self.logger.info(f"因子库构建成功。产出特征维度: {df.shape}")
         return df
 
 
-# ------------------------------------------------------------------------------
-# 高阶因子：舞伴历史光环 (Cross-Season Alpha)
-# ------------------------------------------------------------------------------
-def calculate_historical_partner_alpha(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    计算舞伴历史胜率因子。
-    物理意义：量化‘名舞伴’对明星选手的生存保障作用（Partner Alpha）。
-    """
-    logging.info("计算舞伴历史溢价因子 (Partner Alpha)...")
+# --- 单元测试 ---
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    # 模拟输入 (假设已经跑完了 ETL 的前几步)
+    mock_df = pd.DataFrame({
+        'celebrity_name': ['A', 'A', 'B', 'B'],
+        'season': [1, 1, 1, 1],
+        'week_num': [1, 2, 1, 2],
+        'week_avg_score': [7.0, 8.5, 9.0, 8.0],
+        'celebrity_industry': ['Singer', 'Singer', 'NFL Player', 'NFL Player'],
+        'celebrity_age_during_season': [25, 25, 45, 45],
+        'ballroom_partner': ['Derek', 'Derek', 'Mark', 'Mark'],
+        'placement': [1, 1, 2, 2]
+    })
 
-    # 1. 舞伴基本面：历史上带队的所有打分均值
-    df['partner_alpha'] = df.groupby('ballroom_partner')['raw_score'].transform('mean')
-
-    # 2. 舞伴稳定性：历史上带队的平均排名 (Placement)
-    # 使用 transform 确保跨行计算后直接对齐到每一观测点
-    df['partner_hist_avg_placement'] = df.groupby('ballroom_partner')['placement'].transform('mean')
-
-    return df
+    factory = FeatureFactory()
+    gold_df = factory.generate_gold_library(mock_df)
+    print(gold_df[['celebrity_name', 'score_delta', 'partner_alpha', 'ind_Music_Industry']])

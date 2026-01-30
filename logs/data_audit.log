@@ -1,0 +1,22 @@
+
+--- Validation Run @ 2026-01-30 22:27:49.797350 ---
+[PASSED] Null Integrity - celebrity_name: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - season: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - week_num: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - raw_score: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - score_z: 识别到 0 处非法缺失点
+[PASSED] Score Boundary Check: 识别到 0 行分数超出物理阈值 [1, 15.0]
+[PASSED] Survival Logic Barrier: 识别到 0 条‘幽灵观测’：选手淘汰后仍有评分信号
+[PASSED] Rank-Score Consistency: 识别到 0 个周次的排名与最高分不匹配
+[PASSED] Judge ID Mapping: 识别到 0 条未识别评委的数据，映射失败
+
+--- Validation Run @ 2026-01-30 22:37:50.438359 ---
+[PASSED] Null Integrity - celebrity_name: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - season: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - week_num: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - raw_score: 识别到 0 处非法缺失点
+[PASSED] Null Integrity - score_z: 识别到 0 处非法缺失点
+[PASSED] Score Boundary Check: 识别到 0 行分数超出物理阈值 [1, 15.0]
+[PASSED] Survival Logic Barrier: 识别到 0 条‘幽灵观测’：选手淘汰后仍有评分信号
+[PASSED] Rank-Score Consistency: 识别到 0 个周次的排名与最高分不匹配
+[PASSED] Judge ID Mapping: 识别到 0 条未识别评委的数据，映射失败

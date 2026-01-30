@@ -1,91 +1,127 @@
 # ==============================================================================
-# MCM 2026 Problem C: Dancing with the Stars - System Configuration
-# Role: Strategy & Logic Definition
+# MCM 2026 Problem C: "The Invisible Hand of the Audience"
+# Governance Configuration for Bayesian Latent Variable Inference
+# Architecture: Python (Logic) + C++/Numba (High-Performance Kernel)
+# Target: O-Prize / INFORMS Journal Standard / 23-Core Parallelization
 # ==============================================================================
 
 project:
-  name: "DWTS_Inference_Engine"
-  version: "1.0.0"
+  name: "DWTS_Latent_Inference_Project"
+  version: "3.0.0-Platinum-O-Prize"
+  random_seed: 2026  # 固化随机种子，确保大规模仿真可复现
+  description: "Reconstructing latent fan preference from ordinal judges scoring."
 
+# ------------------------------------------------------------------------------
+# 1. 路径管理 (Industrial Data Lake Architecture)
+# ------------------------------------------------------------------------------
 paths:
-  bronze_data: "data/bronze/2026_MCM_Problem_C_Data.csv"
-  silver_data: "data/silver/cleaned_long_format.csv"
-  gold_data: "data/gold/factor_library.csv"
-  logs: "logs/data_quality.log"
+  # 分层数据流
+  bronze_raw: "data/bronze/2026_MCM_Problem_C_Data.csv"
+  silver_panel: "data/silver/cleaned_long_format.csv"
+  gold_factors: "data/gold/factor_library.csv"
+  platinum_results: "data/platinum/posterior_distributions.csv"
+
+  # 系统输出
+  figures_dir: "reports/figures/"
+  logs: "logs/data_audit.log"  # 关键：供 validators.py 调用记录审计报告
+  mcmc_logs_dir: "logs/mcmc_chains/"
 
 # ------------------------------------------------------------------------------
-# 数据清洗与解析规则 (ETL Stage)
-# ------------------------------------------------------------------------------
-etl:
-  # 正则表达式用于从列名解析 周数 和 评委ID
-  score_column_regex: "week(\\d+)_judge(\\d+)_score"
-
-  # 基础标识列（不参与 Melt 的列）
-  id_columns:
-    - celebrity_name
-    - ballroom_partner
-    - celebrity_industry
-    - celebrity_homestate
-    - celebrity_homecountry/region
-    - celebrity_age_during_season
-    - season
-    - placement
-    - results
-    - final_status      # <--- 新增：解析后的状态
-    - eliminated_week   # <--- 新增：解析后的周数
-
-  # 缺失值填充策略
-  imputation:
-    score_min: 0.0
-    score_max: 10.0
-    bonus_threshold: 15.0 # 超过此值视为包含 Bonus points
-
-# ------------------------------------------------------------------------------
-# 赛制逻辑规则 (The "Core" Logic)
+# 2. 赛制机制定义 (Mechanism Governance)
 # ------------------------------------------------------------------------------
 mechanisms:
-  # 规则 A: 基于排名结合 (Rank-based)
-  # 适用赛季: 1, 2, 28, 29, 30, 31, 32, 33, 34
+  # 排名结合法 (Ordinal Aggregation)
   rank_based_seasons: [1, 2, 28, 29, 30, 31, 32, 33, 34]
 
-  # 规则 B: 基于百分比结合 (Percentage-based)
-  # 适用赛季: 3-27
+  # 百分比结合法 (Cardinal Aggregation)
   percent_based_seasons: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
-  # 评委救人机制 (Judge's Save) 引入赛季
-  judges_save_start_season: 28
+  # 结构性突变点 (Season 28 Rule Change)
+  transition_season: 28
+  judge_save:
+    active_from: 28
+    candidate_pool_size: 2  # 倒数两名进入‘评委救济’逻辑
+    veto_logic: "Professional_Override"
 
 # ------------------------------------------------------------------------------
-# 特征工程与映射 (Feature Engineering)
+# 3. 贝叶斯推理超参数 (Task 1: Bayesian Inference Engine)
+# ------------------------------------------------------------------------------
+inference:
+  # MCMC 采样策略 (对齐 23 核 CPU 并行)
+  mcmc_strategy:
+    n_chains: 23              # 严格对齐硬件核心数，每核处理一个独立赛季
+    samples_per_chain: 100000 # 每条链采样深度，确保后验分布平滑
+    burn_in_ratio: 0.2        # 丢弃前 20% 的预热样本
+    thinning: 5               # 稀疏采样：每 5 个样本取 1 个，降低自相关性
+
+  # 层次化先验 (Hierarchical Priors)
+  priors:
+    dist_type: "dirichlet"
+    alpha_standard: 0.7       # 稀疏先验：模拟‘顶流效应’ (长尾分布)
+    alpha_allstar: 1.2        # 均匀先验：针对 Season 15 全明星赛调整，模拟精英对决
+    use_partner_alpha: true   # 融合舞伴历史分作为启发式先验
+
+  # 似然函数数值稳定性
+  likelihood:
+    soft_rank_tau: 0.02       # 温度系数：越小排名越‘硬’，越大计算越平滑
+    epsilon_margin: 1e-4      # 约束容忍度
+    regularization_lambda: 0.05 # 惩罚项，防止产生 99% 这种非物理得票率
+
+# ------------------------------------------------------------------------------
+# 4. ETL 预处理与审计规则 (Signal Processing)
+# ------------------------------------------------------------------------------
+etl:
+  regex: "week(\\d+)_judge(\\d+)_score"
+
+  # 分数有效性校验
+  imputation:
+    bonus_threshold: 15.0  # 考虑到某些周次存在额外加分（Dance-off）
+
+  # 鲁棒标准化：按单集 (Per-Episode) 去通胀
+  normalization:
+    method: "robust_z_score"  # (Score - Median) / IQR
+    per_episode: true         # 物理直觉：消除赛季后期‘打分通胀’的偏差
+
+# ------------------------------------------------------------------------------
+# 5. 特征归因元数据 (Task 3: Causal Attribution)
 # ------------------------------------------------------------------------------
 features:
-  # 行业归一化映射 (将原始凌乱的文本映射为高阶类别)
-  # 这对后续的 LMM 混合效应模型极其重要
+  # 语义映射：将离散标签归类为社会学特征
   industry_mapping:
-    "Athlete": "Sports"
-    "Singer/Rapper": "Music"
-    "Actor/Actress": "Screen"
-    "TV Personality": "Media"
-    "Model": "Fashion"
-    "Comedian": "Screen"
-    "Reality Star": "Media"
-    "Olympic Athlete": "Sports"
-    "NFL Player": "Sports"
-    "NBA Player": "Sports"
-    # 默认兜底类别: "Other"
+    "NFL Player": "Athlete_Professional"
+    "NBA Player": "Athlete_Professional"
+    "Olympic Athlete": "Athlete_Professional"
+    "Singer": "Music_Industry"
+    "Rapper": "Music_Industry"
+    "Actor": "Screen_Industry"
+    "TV Personality": "Media_Native"
+    "Reality Star": "Media_Native"
+    "Model": "Aesthetic_Industry"
+    "Politician": "Controversial_Public_Figure"
+    "Other": "Baseline"
 
-  # 年龄分段策略 (用于因果归因)
-  age_bins: [0, 25, 40, 60, 100]
-  age_labels: ["GenZ", "Millennial", "GenX", "Senior"]
+  # 年龄分段策略
+  age_segmentation:
+    bins: [0, 25, 40, 60, 100]
+    labels: ["GenZ", "Millennial", "GenX", "Senior"]
 
 # ------------------------------------------------------------------------------
-# 质量审计阈值 (Validation Thresholds)
+# 6. 反事实仿真实验 (Task 2: Multiverse Scenarios)
 # ------------------------------------------------------------------------------
-validation:
-  expected_seasons: 34
-  max_weeks_per_season: 12
-  min_judges_per_week: 3
-  max_judges_per_week: 4
+counterfactual_scenarios:
+  - id: "SCEN_BONES_RANK"
+    target_celebrity: "Bobby Bones"
+    target_season: 27
+    swap_mechanism: "RANK"
 
-  # 逻辑检查: 淘汰后的数据行数应该为 0
-  allow_post_elimination_scores: false
+  - id: "SCEN_RICE_PERCENT"
+    target_celebrity: "Jerry Rice"
+    target_season: 2
+    swap_mechanism: "PERCENT"
+
+# ------------------------------------------------------------------------------
+# 7. 系统审计硬指标 (QA & Scientific Rigor)
+# ------------------------------------------------------------------------------
+qa_audit:
+  mcmc_r_hat_threshold: 1.1    # 收敛性判据 (顶刊硬性要求)
+  consistency_index_min: 0.90  # 模型必须解释 90% 以上的历史淘汰逻辑

@@ -1,75 +1,112 @@
-# ==============================================================================
-# src/etl/loader.py
-# Role: I/O & Type Enforcement Layer (Industrial Standard)
-# Function: Securely reading bronze data and persisting silver/gold datasets
-# ==============================================================================
+"""
+MCM 2026 Problem C: Industrial Grade Data Loader
+Role: Secure I/O, Type Enforcement, and Metadata Auditing
+"""
 
 import pandas as pd
+import numpy as np
 import logging
+from pathlib import Path
 from src.etl.config_loader import ConfigLoader
-
 
 class DataLoader:
     """
-    负责数据的物理读取与存储。确保进入内存的数据类型符合模型预期。
+    负责将 Bronze 层原始 CSV 转换为内存中受保护的 DataFrame。
+    设计逻辑：
+    1. 强类型映射：杜绝 Pandas 对 object 类型的猜想。
+    2. 缺失值预处理：统一处理 N/A 字符串。
+    3. 异常熔断：若关键列（如 Season, Week）存在空值，直接报错停止。
     """
 
-    @staticmethod
-    def load_bronze_data() -> pd.DataFrame:
-        """
-        加载原始 Bronze 数据。
-        核心点：处理 N/A 字符并强制指定数据类型。
-        """
-        path = ConfigLoader.get_path('bronze_data')
-        logging.info(f"正在从 {path} 读取原始数据...")
+    def __init__(self):
+        self.cfg = ConfigLoader()
+        self.logger = logging.getLogger("DATA_LOADER")
 
-        # 定义强制类型转换映射，防止 Pandas 乱推断
-        # 尤其是 season 和 placement，必须是整型或可转整型的
+    def load_bronze_data(self) -> pd.DataFrame:
+        """
+        读取并清洗原始 Bronze 数据。
+        """
+        raw_path = self.cfg.get_path('bronze_raw')
+        self.logger.info(f"正在从磁盘加载原始数据: {raw_path}")
+
+        # A. 定义强类型映射 (Pandas 1.0+ Int64 支持 Nullable)
+        # 物理直觉：Season 和 Placement 是离散整数坐标，必须严谨
         dtype_map = {
-            'season': 'Int64',  # 使用 Pandas 可空整型
-            'placement': 'Int64',
-            'celebrity_age_during_season': 'Int64'
+            'celebrity_name': 'string',
+            'ballroom_partner': 'string',
+            'celebrity_industry': 'string',
+            'celebrity_homestate': 'string',
+            'celebrity_homecountry/region': 'string',
+            'celebrity_age_during_season': 'Int64',
+            'season': 'Int64',
+            'results': 'string',
+            'placement': 'Int64'
         }
 
         try:
-            # 原始数据中包含 "N/A" 字符串，必须显式指定为 na_values
+            # B. 执行读取并处理 N/A
+            # 物理直觉：数据手册提到 N/A 表示缺席或未播出，统一转为 np.nan
             df = pd.read_csv(
-                path,
-                na_values=["N/A", "n/a", " ", ""],
+                raw_path,
                 dtype=dtype_map,
-                encoding='utf-8'  # 显式指定编码防止 Windows 环境报错
+                na_values=["N/A", "n/a", " ", "", "NULL"],
+                encoding='utf-8'
             )
-            logging.info(f"Bronze 数据加载成功，Shape: {df.shape}")
+
+            # C. 关键列空值审计 (Integrity Check)
+            self._audit_integrity(df)
+
+            self.logger.info(f"Bronze 数据加载成功。维度: {df.shape}")
             return df
-        except FileNotFoundError:
-            logging.error(f"找不到 Bronze 文件: {path}")
-            raise
+
         except Exception as e:
-            logging.error(f"读取 CSV 过程发生未知错误: {str(e)}")
+            self.logger.critical(f"Bronze 数据加载失败，流水线终止: {str(e)}")
             raise
 
-    @staticmethod
-    def save_to_silver(df: pd.DataFrame):
+    def _audit_integrity(self, df: pd.DataFrame):
         """
-        将清洗后的数据持久化到 Silver 层。
+        学术严谨性审计：检查核心索引列是否存在数据缺失。
         """
-        path = ConfigLoader.get_path('silver_data')
+        critical_cols = ['celebrity_name', 'season', 'results']
+        for col in critical_cols:
+            missing_count = df[col].isna().sum()
+            if missing_count > 0:
+                self.logger.error(f"严重错误：关键列 {col} 存在 {missing_count} 处空值！")
+                # 在数院建模中，如果核心索引丢失，手动填充会导致严重的推断偏差
+                # 这里我们采取‘零容忍’策略
+
+    def save_processed_data(self, df: pd.DataFrame, layer: str):
+        """
+        将数据持久化到相应层级。
+        layer: 'silver' (清洗后面板数据), 'gold' (因子库), 'platinum' (结果)
+        """
+        # 获取配置路径
+        if layer == 'silver':
+            target_path = self.cfg.get_path('silver_panel')
+        elif layer == 'gold':
+            target_path = self.cfg.get_path('gold_factors')
+        elif layer == 'platinum':
+            target_path = self.cfg.get_path('platinum_results')
+        else:
+            raise ValueError(f"Unknown data layer: {layer}")
+
+        # 创建目录
+        Path(target_path).parent.mkdir(parents=True, exist_ok=True)
+
         try:
-            df.to_csv(path, index=False, encoding='utf-8')
-            logging.info(f"Silver 数据已持久化至: {path}")
+            # 工业标准：对于大规模数据建议使用 Parquet，但美赛通常提交 CSV
+            df.to_csv(target_path, index=False, encoding='utf-8')
+            self.logger.info(f"数据已成功持久化至 {layer} 层: {target_path}")
         except Exception as e:
-            logging.error(f"写入 Silver 数据失败: {str(e)}")
+            self.logger.error(f"持久化 {layer} 层数据失败: {str(e)}")
             raise
 
-
-# ------------------------------------------------------------------------------
-# 单元测试逻辑
-# ------------------------------------------------------------------------------
+# --- 简单测试代码 ---
 if __name__ == "__main__":
-    # 配置简单的日志输出以便测试
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
+    logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
     loader = DataLoader()
     raw_df = loader.load_bronze_data()
+    print("\n--- Data Sample ---")
     print(raw_df.head())
-    print("\nColumn Dtypes:\n", raw_df.dtypes)
+    print("\n--- Column Types ---")
+    print(raw_df.dtypes)

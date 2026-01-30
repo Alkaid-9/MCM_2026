@@ -1,0 +1,72 @@
+# ==============================================================================
+# MCM 2026 Problem C: Bayesian Prior Definitions & Sampling Hyperparameters
+# Role: Defining the "Mental Model" of Fan Behavior before observing data.
+# ==============================================================================
+
+metadata:
+  framework: "Bayesian Inverse Optimization (BIO)"
+  author: "Quantitative Inference Engine v3.0"
+  description: "Priors for Latent Fan Vote Shares and MCMC configurations"
+
+# ------------------------------------------------------------------------------
+# 1. Latent Distribution Models (潜变量分布模型)
+# ------------------------------------------------------------------------------
+vote_distribution:
+  primary_model: "Zipf_Power_Law"  # 模拟社交媒体的‘顶流’现象 (Superstar Effect)
+  fallback_model: "Log_Normal"     # 模拟常规正偏态热度分布
+
+  zipf_params:
+    alpha: 1.2                     # 幂律指数 (典型值 1.0-1.5)，越大代表贫富差距越悬殊
+    min_vote_share: 0.005          # 兜底得票率 (防止除零或无限小)
+
+  log_normal_params:
+    mu_base: 0.0                   # 对数均值锚点
+    sigma_base: 0.6                # 波动率系数，决定了‘黑马’出现的概率
+    clip_threshold: [0.001, 0.9]   # 概率裁剪边界
+
+# ------------------------------------------------------------------------------
+# 2. Informative Prior Weights (启发式因子权重 - 基于 Stage 1)
+# ------------------------------------------------------------------------------
+# 这些权重定义了‘初始估计’中各因子的贡献度
+factor_anchors:
+  partner_alpha_weight: 0.45       # 舞伴光环对初始票数预测的影响
+  technical_momentum_weight: 0.25  # 选手的‘进步曲线’对吸粉能力的贡献
+  industry_base_bias:              # 不同行业自带的流量底池 (Prior Mean Shift)
+    "Sports": 0.05
+    "Music": 0.08
+    "Screen": 0.03
+    "Media": 0.12                  # 真人秀明星自带更强粉丝基础
+    "Other": 0.0
+
+# ------------------------------------------------------------------------------
+# 3. Regularization & Penalty (正则化与惩罚项)
+# ------------------------------------------------------------------------------
+# 防止优化器为了拟合排名而产生极端的、不符合生物学逻辑的票数分布
+regularization:
+  entropy_weight: 0.01             # 最大熵正则化 (Maximum Entropy)，保持分布的自然性
+  l2_shrinkage: 0.05               # 防止单人票数过大导致的过拟合
+  consistency_penalty: 0.15        # 惩罚票数在周际间的剧烈突变（除非有重大表现失误）
+
+# ------------------------------------------------------------------------------
+# 4. MCMC / MAP Solver Hyperparameters (求解器控制)
+# ------------------------------------------------------------------------------
+optimization_control:
+  method: "SLSQP"                  # 默认序列二次规划算法
+  fallback: "COBYLA"               # 非梯度下降容错算法
+  max_iter: 1500
+  tolerance: 1e-7
+
+  sampling:
+    n_chains: 4                    # 并行链数量
+    n_samples: 50000               # 每条链的采样深度
+    burn_in_pct: 0.2               # 丢弃前 20% 的预热样本
+    thinning: 5                    # 稀疏化采样，减少自相关性
+    jump_size: 0.05                # Metropolis 步长因子
+
+# ------------------------------------------------------------------------------
+# 5. Convergence Thresholds (收敛性判据)
+# ------------------------------------------------------------------------------
+diagnostics:
+  r_hat_threshold: 1.1             # Gelman-Rubin 统计量阈值 (越接近 1 越收敛)
+  ess_min: 400                     # 有效样本量 (Effective Sample Size) 最小值
+  fidelity_score_min: 0.95         # 估计结果与真实淘汰结果的一致性底线

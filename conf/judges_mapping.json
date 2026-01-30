@@ -1,0 +1,88 @@
+{
+  "metadata": {
+    "project": "MCM_2026_Problem_C",
+    "description": "Judge Persona Registry & Bayesian Prior Configurations for Latent Variable Inference",
+    "version": "3.0.0",
+    "last_updated": "2026-01-30"
+  },
+
+  "judge_registry": {
+    "CAI": {
+      "full_name": "Carrie Ann Inaba",
+      "style": "Technical_Analyst",
+      "demographics": { "gender": "F", "birth_year": 1968, "primary_expertise": "Contemporary/HipHop" },
+      "bayesian_prior": { "mu": 0.02, "sigma": 0.08 },
+      "bias_factors": { "lift_deduction_severity": 0.9, "artistic_weight": 0.4, "technical_weight": 0.6 }
+    },
+    "LG": {
+      "full_name": "Len Goodman",
+      "style": "Traditionalist_Strict",
+      "demographics": { "gender": "M", "birth_year": 1944, "primary_expertise": "Ballroom_Standard" },
+      "bayesian_prior": { "mu": 0.18, "sigma": 0.04 },
+      "bias_factors": { "innovation_tolerance": -0.4, "artistic_weight": 0.2, "technical_weight": 0.8 }
+    },
+    "BT": {
+      "full_name": "Bruno Tonioli",
+      "style": "Performance_Enthusiast",
+      "demographics": { "gender": "M", "birth_year": 1955, "primary_expertise": "Latin/Artistic" },
+      "bayesian_prior": { "mu": -0.08, "sigma": 0.15 },
+      "bias_factors": { "energy_bonus_sensitivity": 0.7, "artistic_weight": 0.8, "technical_weight": 0.2 }
+    },
+    "JH": {
+      "full_name": "Julianne Hough",
+      "style": "Pro_Hybrid",
+      "demographics": { "gender": "F", "birth_year": 1988, "primary_expertise": "Multi_Discipline" },
+      "bayesian_prior": { "mu": -0.02, "sigma": 0.07 },
+      "bias_factors": { "complexity_appreciation": 0.6, "artistic_weight": 0.5, "technical_weight": 0.5 }
+    },
+    "DH": {
+      "full_name": "Derek Hough",
+      "style": "Modernist_Choreographer",
+      "demographics": { "gender": "M", "birth_year": 1985, "primary_expertise": "Innovation" },
+      "bayesian_prior": { "mu": 0.01, "sigma": 0.06 },
+      "bias_factors": { "originality_weight": 0.8, "artistic_weight": 0.5, "technical_weight": 0.5 }
+    },
+    "GUEST": {
+      "full_name": "Generic Guest Judge",
+      "style": "Ambiguous",
+      "demographics": { "gender": "U", "birth_year": null, "primary_expertise": "Entertainment" },
+      "bayesian_prior": { "mu": -0.15, "sigma": 0.25 },
+      "bias_factors": { "fan_sentiment_alignment": 0.8, "artistic_weight": 0.7, "technical_weight": 0.3 }
+    },
+    "UNKNOWN": {
+      "full_name": "Unidentified Data Point",
+      "style": "Baseline",
+      "demographics": { "gender": "U", "birth_year": null, "primary_expertise": "General" },
+      "bayesian_prior": { "mu": 0.0, "sigma": 0.30 },
+      "bias_factors": { "artistic_weight": 0.5, "technical_weight": 0.5 }
+    }
+  },
+
+  "seasonal_configurations": {
+    "defaults": {
+      "S01_S18": ["CAI", "LG", "BT", "N/A"],
+      "S19_S20": ["CAI", "LG", "JH", "BT"],
+      "S21_S28": ["CAI", "LG", "BT", "N/A"],
+      "S29_S34": ["CAI", "DH", "BT", "N/A"]
+    },
+    "overrides": {
+      "season_19": ["CAI", "LG", "JH", "BT"],
+      "season_21": ["CAI", "JH", "BT", "N/A"],
+      "season_23": ["CAI", "JH", "BT", "N/A"],
+      "season_29": ["CAI", "DH", "BT", "N/A"]
+    }
+  },
+
+  "weekly_anomalies": {
+    "s19w04": { "judge_slots": { "slot4": "GUEST" }, "reason": "Guest judge Zendaya" },
+    "s23w01": { "judge_slots": { "slot2": "GUEST" }, "reason": "Len Goodman absent" },
+    "s33w05": { "judge_slots": { "slot4": "GUEST" }, "reason": "Special event 5-judge panel" }
+  },
+
+  "feature_engineering_meta": {
+    "categorical_mappings": {
+      "style": { "Technical_Analyst": 1, "Traditionalist_Strict": 2, "Performance_Enthusiast": 3, "Pro_Hybrid": 4, "Modernist_Choreographer": 5, "Ambiguous": 0 },
+      "gender": { "M": 0, "F": 1, "U": 0.5 }
+    }
+  }
+}
