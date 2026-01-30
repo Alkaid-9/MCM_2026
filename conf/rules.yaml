@@ -1,21 +1,20 @@
 # ==============================================================================
-# MCM 2026 Problem C: "The Invisible Hand of the Audience"
+# MCM 2026 Problem C: "The Invisible Hand"
 # Governance Configuration for Bayesian Latent Variable Inference
 # Architecture: Python (Logic) + C++/Numba (High-Performance Kernel)
-# Target: O-Prize / INFORMS Journal Standard / 23-Core Parallelization
 # ==============================================================================
 
 project:
   name: "DWTS_Latent_Inference_Project"
-  version: "3.0.0-Platinum-O-Prize"
-  random_seed: 2026  # 固化随机种子，确保大规模仿真可复现
-  description: "Reconstructing latent fan preference from ordinal judges scoring."
+  version: "3.1.0-Platinum-O-Prize"
+  random_seed: 2026  # 固化随机种子，确保大规模仿真可复现 (Reproducibility)
+  description: "Reconstructing latent fan preference from ordinal judges scoring via Bayesian Inverse Optimization."
 
 # ------------------------------------------------------------------------------
 # 1. 路径管理 (Industrial Data Lake Architecture)
 # ------------------------------------------------------------------------------
 paths:
-  # 分层数据流
+  # 分层数据流 (Data Lake Layers)
   bronze_raw: "data/bronze/2026_MCM_Problem_C_Data.csv"
   silver_panel: "data/silver/cleaned_long_format.csv"
   gold_factors: "data/gold/factor_library.csv"
@@ -23,7 +22,7 @@ paths:
 
   # 系统输出
   figures_dir: "reports/figures/"
-  logs: "logs/data_audit.log"  # 关键：供 validators.py 调用记录审计报告
+  logs: "logs/system_audit.log"          # 关键：供 validators.py 调用记录审计报告
   mcmc_logs_dir: "logs/mcmc_chains/"
 
 # ------------------------------------------------------------------------------
@@ -31,13 +30,18 @@ paths:
 # ------------------------------------------------------------------------------
 mechanisms:
   # 排名结合法 (Ordinal Aggregation)
+  # 物理意义：Rank 机制起到了 'Low-pass Filter' 作用，截断了粉丝极端投票的影响
   rank_based_seasons: [1, 2, 28, 29, 30, 31, 32, 33, 34]
 
   # 百分比结合法 (Cardinal Aggregation)
+  # 物理意义：Percent 机制是 'Signal Amplifier'，放大了流量明星的长尾效应
   percent_based_seasons: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
   # 结构性突变点 (Season 28 Rule Change)
   transition_season: 28
+
+  # 评委救济机制 (Judges' Save)
+  # 学术价值：这是 MCMC 的强约束 (Hard Constraint) —— Bottom Two 的总分必须是全场最低
   judge_save:
     active_from: 28
     candidate_pool_size: 2  # 倒数两名进入‘评委救济’逻辑
@@ -49,43 +53,33 @@ mechanisms:
 inference:
   # MCMC 采样策略 (对齐 23 核 CPU 并行)
   mcmc_strategy:
-    n_chains: 23              # 严格对齐硬件核心数，每核处理一个独立赛季
+    n_chains: 23             # 严格对齐硬件核心数，每核处理一个独立链
     samples_per_chain: 100000 # 每条链采样深度，确保后验分布平滑
-    burn_in_ratio: 0.2        # 丢弃前 20% 的预热样本
-    thinning: 5               # 稀疏采样：每 5 个样本取 1 个，降低自相关性
+    burn_in_ratio: 0.2       # 丢弃前 20% 的预热样本
+    thinning: 5              # 稀疏采样：每 5 个样本取 1 个，降低自相关性 (Autocorrelation)
 
-  # 层次化先验 (Hierarchical Priors)
+  # 约束与惩罚刚度 (Likelihood Hyperparameters)
+  # 物理意义：决定了违反历史事实的代价有多大 (Lambda)
+  constraints:
+    rank_violation_penalty: 100.0      # 违反排名顺序的惩罚
+    bottom_two_penalty_weight: 1000.0  # [新增] 违反 "Bottom Two" 事实的惩罚 (硬约束)
+    score_margin_penalty: 500.0        # 分数差距惩罚 (Percent 模式专用)
+    entropy_regularization: 0.05       # 最大熵正则项系数 (Occam's Razor)
+
+  # 先验强度
   priors:
-    dist_type: "dirichlet"
-    alpha_standard: 0.7       # 稀疏先验：模拟‘顶流效应’ (长尾分布)
-    alpha_allstar: 1.2        # 均匀先验：针对 Season 15 全明星赛调整，模拟精英对决
-    use_partner_alpha: true   # 融合舞伴历史分作为启发式先验
-
-  # 似然函数数值稳定性
-  likelihood:
-    soft_rank_tau: 0.02       # 温度系数：越小排名越‘硬’，越大计算越平滑
-    epsilon_margin: 1e-4      # 约束容忍度
-    regularization_lambda: 0.05 # 惩罚项，防止产生 99% 这种非物理得票率
+    zipf_alpha_standard: 1.2  # 社交网络幂律指数 (标准值)
+    zipf_alpha_allstar: 0.8   # 全明星赛季头部效应较弱，分布更扁平
+    prior_strength: 0.1       # 先验在后验中的权重 (Bayesian Weight)
 
 # ------------------------------------------------------------------------------
-# 4. ETL 预处理与审计规则 (Signal Processing)
-# ------------------------------------------------------------------------------
-etl:
-  regex: "week(\\d+)_judge(\\d+)_score"
-
-  # 分数有效性校验
-  imputation:
-    bonus_threshold: 15.0  # 考虑到某些周次存在额外加分（Dance-off）
-
-  # 鲁棒标准化：按单集 (Per-Episode) 去通胀
-  normalization:
-    method: "robust_z_score"  # (Score - Median) / IQR
-    per_episode: true         # 物理直觉：消除赛季后期‘打分通胀’的偏差
-
-# ------------------------------------------------------------------------------
-# 5. 特征归因元数据 (Task 3: Causal Attribution)
+# 4. ETL 特征工程参数 (Feature Engineering)
 # ------------------------------------------------------------------------------
 features:
+  # 滚动窗口配置 (防止前瞻偏差)
+  rolling_window:
+    min_periods: 1  # 至少需要 1 个历史赛季才能计算 Partner Alpha
+
   # 语义映射：将离散标签归类为社会学特征
   industry_mapping:
     "NFL Player": "Athlete_Professional"
@@ -106,22 +100,15 @@ features:
     labels: ["GenZ", "Millennial", "GenX", "Senior"]
 
 # ------------------------------------------------------------------------------
-# 6. 反事实仿真实验 (Task 2: Multiverse Scenarios)
+# 5. 机制设计参数 (Task 4: Mechanism Design)
 # ------------------------------------------------------------------------------
-counterfactual_scenarios:
-  - id: "SCEN_BONES_RANK"
-    target_celebrity: "Bobby Bones"
-    target_season: 27
-    swap_mechanism: "RANK"
+task4_mechanism_design:
+  # 动态权重函数 w(t) = Sigmoid(k * (t - t0))
+  # 物理意义：赛季初期重人气，后期重技术
+  dynamic_weighting:
+    sigmoid_k: 0.5    # 变化斜率
+    sigmoid_t0: 0.6   # 拐点位置 (赛程的 60% 处)
 
-  - id: "SCEN_RICE_PERCENT"
-    target_celebrity: "Jerry Rice"
-    target_season: 2
-    swap_mechanism: "PERCENT"
-
-# ------------------------------------------------------------------------------
-# 7. 系统审计硬指标 (QA & Scientific Rigor)
-# ------------------------------------------------------------------------------
-qa_audit:
-  mcmc_r_hat_threshold: 1.1    # 收敛性判据 (顶刊硬性要求)
-  consistency_index_min: 0.90  # 模型必须解释 90% 以上的历史淘汰逻辑
+  # 熔断机制阈值
+  circuit_breaker:
+    vote_inequality_cap: 0.8  # 基尼系数上限，防止粉丝票过于集中

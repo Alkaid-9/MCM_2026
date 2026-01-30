@@ -1,0 +1,85 @@
+# ==============================================================================
+# MCM 2026 Problem C: "The Invisible Hand" - Project Git Exclusion
+# Standard: Industrial Quant / Silicon Valley HPC Engineering
+# ==============================================================================
+
+# --- [1. Python 核心隔离] ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+.ipynb_checkpoints/
+.pytest_cache/
+# Numba JIT 缓存
+__numba_cache__/
+
+# --- [2. C++ & Build System (CMake) 隔离] ---
+# 所有的编译产物必须在 build/ 文件夹内，通过 gitignore 彻底封杀
+build/
+bin/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+# 忽略编译出的静态库与动态库 (通过 Wrapper 加载)
+*.a
+*.lib
+*.dll
+*.dylib
+*.exp
+*.pdb
+*.ilk
+
+# --- [3. 数据湖分层保护 (Data Lake Architecture)] ---
+# 物理意义：Git 只管代码，不管数据。
+# 我们只保留文件夹结构，通过在子文件夹内放一个 .gitkeep 来维持
+data/bronze/*
+data/silver/*
+data/gold/*
+data/platinum/*
+# 允许追踪数据定义文件或极小的样本文件
+!data/**/.gitkeep
+!data/metadata.json
+
+# --- [4. 日志与取证数据] ---
+# 记录了 MCMC 收敛过程的日志通常很大
+logs/*.log
+logs/mcmc_chains/
+
+# --- [5. IDE & 系统噪音] ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+
+# --- [6. 论文产物与临时资源] ---
+# 允许追踪主论文 .tex，但排除编译生成的临时垃圾文件
+*.aux
+*.fdb_latexmk
+*.fls
+*.gz
+*.log
+*.toc
+*.out
+# 排除自动生成的代码附录 (由 exporter.py 实时生成)
+Code_Appendix.md
+appendix_code.tex
+reports/figures/*
+!reports/figures/.gitkeep
+
+# ==============================================================================
+# 导师叮嘱：
+# 如果你想让 Git 追踪某些文件夹的结构但不追踪内容，
+# 请在 data/bronze/ 等目录下创建一个名为 .gitkeep 的空文件。
+# ==============================================================================
