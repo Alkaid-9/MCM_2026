@@ -1,0 +1,3 @@
+/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/mcm_core_lib.dir
+/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/edit_cache.dir
+/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/rebuild_cache.dir
