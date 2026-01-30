@@ -153,6 +153,30 @@ src/bindings.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.s
 .PHONY : src/bindings.cpp.s
 
+src/likelihood.o: src/likelihood.cpp.o
+.PHONY : src/likelihood.o
+
+# target to build an object file
+src/likelihood.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o
+.PHONY : src/likelihood.cpp.o
+
+src/likelihood.i: src/likelihood.cpp.i
+.PHONY : src/likelihood.i
+
+# target to preprocess a source file
+src/likelihood.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.i
+.PHONY : src/likelihood.cpp.i
+
+src/likelihood.s: src/likelihood.cpp.s
+.PHONY : src/likelihood.s
+
+# target to generate assembly for a file
+src/likelihood.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.s
+.PHONY : src/likelihood.cpp.s
+
 src/mcmc_sampler.o: src/mcmc_sampler.cpp.o
 .PHONY : src/mcmc_sampler.o
 
@@ -189,6 +213,9 @@ help:
 	@echo "... src/bindings.o"
 	@echo "... src/bindings.i"
 	@echo "... src/bindings.s"
+	@echo "... src/likelihood.o"
+	@echo "... src/likelihood.i"
+	@echo "... src/likelihood.s"
 	@echo "... src/mcmc_sampler.o"
 	@echo "... src/mcmc_sampler.i"
 	@echo "... src/mcmc_sampler.s"

@@ -1,7 +1,7 @@
 """
 MCM 2026 Problem C: Bayesian Prior Architect
 Role: Transforming ETL features into Informative Priors (Zipf's Law & Log-Normal).
-Standard: O-Prize Academic Rigor / Quantitative Finance Pre-Computation.
+Standard: Academic Rigor & Industrial Scalability.
 """
 
 import numpy as np

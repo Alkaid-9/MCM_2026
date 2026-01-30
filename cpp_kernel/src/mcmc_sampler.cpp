@@ -1,15 +1,17 @@
 /**
  * MCM 2026 Problem C: High-Performance MCMC Sampler Implementation
  * Role: 23-Core Parallel Metropolis-Hastings on the Probability Simplex.
- * Standard: Industrial HPC / Bayesian Convergence Standards (R-hat).
+ * Standard: Industrial HPC / Bayesian Convergence Standards (Gelman-Rubin R-hat).
  */
 
 #include "mcmc_sampler.hpp"
 #include "math_utils.hpp"
-#include "diagnostics.hpp"
+#include "diagnostics.hpp" // 必须包含，用于收敛性审计
 #include <omp.h>
 #include <random>
 #include <iostream>
+#include <vector>
+#include <numeric>
 
 namespace mcm {
 namespace core {
@@ -17,9 +19,9 @@ namespace core {
 MCMCSampler::MCMCSampler(int seed) : seed_(seed) {}
 
 /**
- * 【建议分布逻辑】Simplex Random Walk
- * 物理意义：在 log-space 进行高斯扰动后通过 Softmax 映射回单位单纯形。
- * 这种方法能确保采样点永远合法（Sum to 1），且游走效率极高。
+ * @brief 建议分布：单纯形上的对数空间随机游走
+ * 物理意义：在无约束的 log-space 进行扰动，通过 Softmax 投影回 Sum=1 的单纯形。
+ * 这种方法能自适应处理边界，避免产生负票数。
  */
 Eigen::VectorXd MCMCSampler::propose_next_state(
     const Eigen::VectorXd& current_v,
@@ -27,50 +29,56 @@ Eigen::VectorXd MCMCSampler::propose_next_state(
     std::mt19937& gen)
 {
     std::normal_distribution<double> dist(0.0, jump_size);
-    int n = current_v.size();
+    int n = static_cast<int>(current_v.size());
 
-    // 在对数空间进行扰动
+    // 映射到对数空间 (加上极小值防止 log(0))
     Eigen::VectorXd log_v = (current_v.array() + 1e-9).log();
+
+    // 注入各向同性高斯噪声
     for (int i = 0; i < n; ++i) {
         log_v[i] += dist(gen);
     }
 
-    // 映射回单纯形
+    // 投影回单纯形
     return mcm::math::softmax(log_v);
 }
 
 MCMCSampler::InferenceResult MCMCSampler::run_parallel_inference(
     const Eigen::VectorXd& judge_signals,
     int elim_idx,
+    const Eigen::VectorXi& jeopardy_mask,
     const Eigen::VectorXd& prior_mu,
     const std::string& mechanism,
     int n_chains,
     int n_samples,
     double jump_size)
 {
-    int n_contestants = judge_signals.size();
+    // --- 1. 初始化容器 ---
+    const int n_contestants = static_cast<int>(judge_signals.size());
     std::vector<std::vector<Eigen::VectorXd>> all_chains(n_chains);
     std::vector<double> acceptance_rates(n_chains, 0.0);
 
-    // 预分配每条链的样本空间
+    // --- 2. OpenMP 23 核并行采样点火 ---
+    // 每个线程处理一条独立的马尔可夫链
     #pragma omp parallel for num_threads(n_chains) schedule(dynamic)
     for (int m = 0; m < n_chains; ++m) {
+        // 使用独立随机数种子，确保链的独立性
         std::mt19937 gen(seed_ + m);
         std::uniform_real_distribution<double> u_dist(0.0, 1.0);
 
         Eigen::VectorXd current_state = prior_mu;
-        double current_log_lik = compute_log_likelihood(current_state, judge_signals, elim_idx, mechanism);
+        double current_log_lik = compute_log_likelihood(current_state, judge_signals, elim_idx, jeopardy_mask, mechanism);
 
         int accepted = 0;
         std::vector<Eigen::VectorXd> chain_samples;
-        chain_samples.reserve(n_samples / 5); // 考虑 thinning 后的容量
+        chain_samples.reserve(n_samples / 5); // 预估 Thinning 后的容量
 
         for (int i = 0; i < n_samples; ++i) {
-            // 1. Propose
+            // A. Propose: 生成新的候选状态
             Eigen::VectorXd proposal = propose_next_state(current_state, jump_size, gen);
-            double proposal_log_lik = compute_log_likelihood(proposal, judge_signals, elim_idx, mechanism);
+            double proposal_log_lik = compute_log_likelihood(proposal, judge_signals, elim_idx, jeopardy_mask, mechanism);
 
-            // 2. Metropolis-Hastings Acceptance
+            // B. Metropolis-Hastings 接受/拒绝判据
             double log_alpha = proposal_log_lik - current_log_lik;
             if (std::log(u_dist(gen)) < log_alpha) {
                 current_state = proposal;
@@ -78,8 +86,9 @@ MCMCSampler::InferenceResult MCMCSampler::run_parallel_inference(
                 accepted++;
             }
 
-            // 3. Thinning (每 5 步取 1 样，减少自相关性)
-            if (i >= (n_samples * 0.2) && i % 5 == 0) { // 包含 20% Burn-in
+            // C. Burn-in 与 Thinning 处理
+            // 丢弃前 20% 样本，每 5 步取 1 样，降低自相关性
+            if (i >= (n_samples * 0.2) && i % 5 == 0) {
                 chain_samples.push_back(current_state);
             }
         }
@@ -87,34 +96,38 @@ MCMCSampler::InferenceResult MCMCSampler::run_parallel_inference(
         acceptance_rates[m] = static_cast<double>(accepted) / n_samples;
     }
 
-    // --- 统计汇总与不确定性量化 ---
+    // --- 3. 统计汇总与后验量化 ---
     InferenceResult res;
     res.posterior_mean = Eigen::VectorXd::Zero(n_contestants);
     res.posterior_std = Eigen::VectorXd::Zero(n_contestants);
 
-    // A. 计算均值 (Posterior Mean)
-    long long total_samples = 0;
-    mcm::math::RunningStat stat_engine; // 借用 Welford 算法思想的简化版汇总
-
+    long long total_valid_samples = 0;
+    // 准备 R-hat 计算用的多链容器
     std::vector<std::vector<double>> r_hat_chains(n_chains);
 
+    // A. 遍历所有并行链进行汇总
     for (int m = 0; m < n_chains; ++m) {
         for (const auto& sample : all_chains[m]) {
             res.posterior_mean += sample;
-            total_samples++;
+            // 提取第一维度作为收敛性代表 (Gelman-Rubin 标准做法)
+            r_hat_chains[m].push_back(sample[0]);
+            total_valid_samples++;
         }
-        // 为 R-hat 提取第一个选手的链作为收敛代表（学术惯例）
-        for (const auto& sample : all_chains[m]) r_hat_chains[m].push_back(sample[0]);
     }
-    res.posterior_mean /= static_cast<double>(total_samples);
 
-    // B. 计算不确定性指标
-    res.shannon_entropy = mcm::math::compute_entropy(res.posterior_mean);
+    if (total_valid_samples > 0) {
+        res.posterior_mean /= static_cast<double>(total_valid_samples);
+    }
+
+    // B. 计算贝叶斯核心指标
+    // 此时 mcm::diag 已经通过 diagnostics.hpp 可见
     res.r_hat = mcm::diag::compute_r_hat(r_hat_chains);
+    res.shannon_entropy = mcm::math::compute_entropy(res.posterior_mean);
     res.acceptance_rate = std::accumulate(acceptance_rates.begin(), acceptance_rates.end(), 0.0) / n_chains;
     res.converged = (res.r_hat < 1.1);
 
     // C. 计算后验标准差 (Posterior Std)
+    // 用于量化 Task 1 中要求的“对估计结果的把握程度”
     Eigen::VectorXd var_sum = Eigen::VectorXd::Zero(n_contestants);
     for (int m = 0; m < n_chains; ++m) {
         for (const auto& sample : all_chains[m]) {
@@ -122,7 +135,10 @@ MCMCSampler::InferenceResult MCMCSampler::run_parallel_inference(
             var_sum += diff.cwiseProduct(diff);
         }
     }
-    res.posterior_std = (var_sum / (total_samples - 1)).cwiseSqrt();
+
+    if (total_valid_samples > 1) {
+        res.posterior_std = (var_sum / (total_valid_samples - 1)).cwiseSqrt();
+    }
 
     return res;
 }

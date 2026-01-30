@@ -2,6 +2,7 @@
 # MCM 2026 Problem C: "The Invisible Hand"
 # Governance Configuration for Bayesian Latent Variable Inference
 # Architecture: Python (Logic) + C++/Numba (High-Performance Kernel)
+# Target: O-Prize / INFORMS Journal Standard / 23-Core Parallelization
 # ==============================================================================
 
 project:
@@ -54,23 +55,24 @@ inference:
   # MCMC 采样策略 (对齐 23 核 CPU 并行)
   mcmc_strategy:
     n_chains: 23             # 严格对齐硬件核心数，每核处理一个独立链
-    samples_per_chain: 100000 # 每条链采样深度，确保后验分布平滑
+    samples_per_chain: 1000000 # 提升采样深度以解决 R-hat > 1.1 的不收敛问题
     burn_in_ratio: 0.2       # 丢弃前 20% 的预热样本
-    thinning: 5              # 稀疏采样：每 5 个样本取 1 个，降低自相关性 (Autocorrelation)
+    thinning: 10             # 增加稀疏步长，进一步降低马尔可夫链的自相关性
+    jump_size: 0.02          # 降低步长，使采样在单纯形高概率区游走更平稳
 
   # 约束与惩罚刚度 (Likelihood Hyperparameters)
   # 物理意义：决定了违反历史事实的代价有多大 (Lambda)
   constraints:
-    rank_violation_penalty: 100.0      # 违反排名顺序的惩罚
-    bottom_two_penalty_weight: 1000.0  # [新增] 违反 "Bottom Two" 事实的惩罚 (硬约束)
+    rank_violation_penalty: 150.0      # 违反排名顺序的惩罚
+    bottom_two_penalty_weight: 1500.0  # [补丁] 违反 "Bottom Two" 事实的惩罚 (硬约束)
     score_margin_penalty: 500.0        # 分数差距惩罚 (Percent 模式专用)
-    entropy_regularization: 0.05       # 最大熵正则项系数 (Occam's Razor)
+    entropy_regularization: 0.08       # 增加最大熵正则，倾向于更均匀的选民分布（奥卡姆剃刀）
 
-  # 先验强度
+  # 先验强度 (Bayesian Priors)
   priors:
     zipf_alpha_standard: 1.2  # 社交网络幂律指数 (标准值)
     zipf_alpha_allstar: 0.8   # 全明星赛季头部效应较弱，分布更扁平
-    prior_strength: 0.1       # 先验在后验中的权重 (Bayesian Weight)
+    prior_strength: 0.15      # 略微提升先验权重，增强系统稳定性
 
 # ------------------------------------------------------------------------------
 # 4. ETL 特征工程参数 (Feature Engineering)
@@ -87,14 +89,16 @@ features:
     "Olympic Athlete": "Athlete_Professional"
     "Singer": "Music_Industry"
     "Rapper": "Music_Industry"
+    "R&B Singer": "Music_Industry"
     "Actor": "Screen_Industry"
+    "Actress": "Screen_Industry"
     "TV Personality": "Media_Native"
     "Reality Star": "Media_Native"
     "Model": "Aesthetic_Industry"
     "Politician": "Controversial_Public_Figure"
     "Other": "Baseline"
 
-  # 年龄分段策略
+  # 年龄分段策略 (用于 Task 3 归因分析)
   age_segmentation:
     bins: [0, 25, 40, 60, 100]
     labels: ["GenZ", "Millennial", "GenX", "Senior"]
@@ -104,11 +108,11 @@ features:
 # ------------------------------------------------------------------------------
 task4_mechanism_design:
   # 动态权重函数 w(t) = Sigmoid(k * (t - t0))
-  # 物理意义：赛季初期重人气，后期重技术
+  # 物理意义：赛季初期重人气（Engagement），后期重技术（Meritocracy）
   dynamic_weighting:
     sigmoid_k: 0.5    # 变化斜率
     sigmoid_t0: 0.6   # 拐点位置 (赛程的 60% 处)
 
   # 熔断机制阈值
   circuit_breaker:
-    vote_inequality_cap: 0.8  # 基尼系数上限，防止粉丝票过于集中
+    vote_inequality_cap: 0.8  # 基尼系数上限，防止粉丝票过于集中导致的“算法霸权”

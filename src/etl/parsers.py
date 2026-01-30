@@ -83,11 +83,12 @@ class TextParser:
         df['eliminated_week'] = raw_weeks
 
         # --- 3. 最终状态向量化映射 (Status Mapping) ---
+        # 调整顺序：将 Withdrew 提前，因为它是一个独立于比赛结果的外生事件
         conds = [
             df['results'].str.contains(r'1st|Winner|Champion', case=False, na=False),
             df['results'].str.contains(r'2nd|Runner', case=False, na=False),
             df['results'].str.contains(r'3rd|Finalist', case=False, na=False),
-            df['results'].str.contains(r'Withdrew', case=False, na=False),
+            df['results'].str.contains(r'Withdrew|Quit|Injured', case=False, na=False),
             df['results'].str.contains(r'Eliminated', case=False, na=False)
         ]
         choices = ['Winner', 'RunnerUp', 'Finalist', 'Withdrew', 'Eliminated']
@@ -105,7 +106,11 @@ class TextParser:
         # 注意：Bronze 数据如果是宽表（每人一行），这里的 info 可能不全。
         # 但如果 'results' 列包含历史信息（如 "Bottom 2 Week 5"），我们需要提取。
         # 这里预留接口，如果 description 里有 "Bottom Two"，打上标记。
-        df['had_bottom_two_record'] = df['results'].str.contains(r'Bottom\s*(Two|2)|Risk', case=False, na=False).astype(int)
+        # 增加 'Jeopardy' 关键词，这是美赛原始描述中最常见的词汇之一
+        # --- 5. [核心新增] 危险区信号挖掘 (Jeopardy Signal) ---
+        # 使用 (?:...) 非捕获分组，消除 Pandas UserWarning，并涵盖所有美赛描述变体
+        jeopardy_pattern = r'Bottom\s*(?:Two|2)|Risk|Jeopardy|Danger'
+        df['had_bottom_two_record'] = df['results'].str.contains(jeopardy_pattern, case=False, na=False).astype(int)
 
         return df
 

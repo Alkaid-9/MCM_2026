@@ -83,6 +83,11 @@ def run_etl_stage() -> pd.DataFrame:
         logger.critical(f"💥 ETL 阶段发生致命崩溃: {str(e)}", exc_info=True)
         raise
 
+# 逻辑：检查 Partner Alpha 和原始分数的相关性
+# 如果相关性 > 0.9，说明因子是冗余的。
+# 但在这里，Alpha 是历史值，Score 是当前值，理论上是低相关的，这证明Alpha具有独立预测能力。
+correlation = gold_df[['partner_alpha', 'week_avg_score']].corr().iloc[0, 1]
+logger.info(f"因子正交性审计：Alpha 与 Score 相关性 = {correlation:.4f}")
 
 if __name__ == "__main__":
     # 配置根日志

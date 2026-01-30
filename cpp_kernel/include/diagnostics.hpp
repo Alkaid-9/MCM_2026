@@ -11,95 +11,114 @@
 #include <cmath>
 #include <numeric>
 #include <Eigen/Dense>
-#include <iostream>
+#include <algorithm>
 
 namespace mcm {
 namespace diag {
 
 /**
- * 【学术核心指标】Gelman-Rubin Statistic (R-hat)
- * 物理意义：对比‘链间方差’与‘链内方差’。
- * 判定标准：R-hat < 1.1 说明采样已充分收敛（顶刊硬要求）。
+ * @brief 【学术核心指标】Gelman-Rubin Statistic (R-hat)
+ * 物理意义：对比“链间方差”与“链内方差”。
+ * 判定标准：R-hat < 1.1 说明采样已充分收敛（顶刊硬性要求）。
+ *
+ * @param chains: 多个独立马尔可夫链的采样序列 [M条链][N个样本]
  */
 inline double compute_r_hat(const std::vector<std::vector<double>>& chains) {
-    int M = chains.size();    // 链的数量 (通常对齐 23 核)
-    int N = chains[0].size(); // 每条链的采样深度
-    if (M < 2 || N < 10) return 9.99;
+    size_t m = chains.size();    // 链的数量 (通常对齐 23 核)
+    if (m < 2) return 9.99;      // 单链无法计算 R-hat
 
-    std::vector<double> chain_means(M);
-    std::vector<double> chain_vars(M);
+    size_t n = chains[0].size(); // 每条链的有效采样深度
+    if (n < 10) return 9.99;
 
-    for (int m = 0; m < M; ++m) {
-        double sum = std::accumulate(chains[m].begin(), chains[m].end(), 0.0);
-        chain_means[m] = sum / N;
+    std::vector<double> chain_means(m);
+    std::vector<double> chain_vars(m);
 
-        double sq_sum = 0;
-        for (double x : chains[m]) sq_sum += (x - chain_means[m]) * (x - chain_means[m]);
-        chain_vars[m] = sq_sum / (N - 1);
+    // 1. 计算每条链的均值和方差
+    for (size_t i = 0; i < m; ++i) {
+        double sum = std::accumulate(chains[i].begin(), chains[i].end(), 0.0);
+        double mean = sum / n;
+        chain_means[i] = mean;
+
+        double accum = 0.0;
+        for (double x : chains[i]) {
+            accum += (x - mean) * (x - mean);
+        }
+        chain_vars[i] = accum / (n - 1);
     }
 
-    // 计算全样本均值 (Grand Mean)
-    double grand_mean = std::accumulate(chain_means.begin(), chain_means.end(), 0.0) / M;
+    // 2. 计算全样本均值 (Grand Mean)
+    double grand_mean = std::accumulate(chain_means.begin(), chain_means.end(), 0.0) / m;
 
-    // B: 链间方差 (Between-chain variance)
-    double B = 0;
-    for (double mu : chain_means) B += (mu - grand_mean) * (mu - grand_mean);
-    B = (static_cast<double>(N) / (M - 1)) * B;
+    // 3. 计算 B (Between-chain variance)
+    double b_sum = 0.0;
+    for (double mu : chain_means) {
+        b_sum += (mu - grand_mean) * (mu - grand_mean);
+    }
+    double B = (static_cast<double>(n) / (m - 1)) * b_sum;
 
-    // W: 链内方差 (Within-chain variance)
-    double W = std::accumulate(chain_vars.begin(), chain_vars.end(), 0.0) / M;
+    // 4. 计算 W (Within-chain variance)
+    double W = std::accumulate(chain_vars.begin(), chain_vars.end(), 0.0) / m;
 
-    // V_hat: 目标分布方差的估计
-    double V_hat = (static_cast<double>(N - 1) / N) * W + (static_cast<double>(B) / N);
+    // 5. 计算目标分布方差的估计值 V_hat
+    // 这是一个无偏估计，结合了链内和链间的差异
+    double var_hat = (static_cast<double>(n - 1) / n) * W + (B / n);
 
-    return std::sqrt(V_hat / (W + 1e-12));
+    // 6. R-hat = sqrt(V_hat / W)
+    // 加入 epsilon 防止分母为 0
+    return std::sqrt(var_hat / (W + 1e-12));
 }
 
 /**
- * 【算法效率指标】Effective Sample Size (ESS)
+ * @brief 【算法效率指标】Effective Sample Size (ESS)
  * 物理意义：由于马尔可夫链存在自相关，并非所有样本都是独立的。
- * ESS 越高，说明你的 MCMC 算法跳跃效率越高。
+ * ESS 越高，说明你的 MCMC 算法跳转效率越高，关联噪音越小。
  */
 inline double compute_ess(const std::vector<double>& chain) {
-    int N = chain.size();
-    if (N < 2) return 0.0;
+    size_t n = chain.size();
+    if (n < 2) return 0.0;
 
-    // 1. 计算滞后自相关 (Autocorrelation at lag 1)
-    double mean = std::accumulate(chain.begin(), chain.end(), 0.0) / N;
-    double var = 0;
+    // 计算滞后为 1 的自相关系数 (Autocorrelation at lag 1)
+    double mean = std::accumulate(chain.begin(), chain.end(), 0.0) / n;
+    double var = 0.0;
     for (double x : chain) var += (x - mean) * (x - mean);
-    var /= N;
+    var /= n;
 
-    double rho_1 = 0;
-    for (int t = 0; t < N - 1; ++t) {
+    double rho_1 = 0.0;
+    for (size_t t = 0; t < n - 1; ++t) {
         rho_1 += (chain[t] - mean) * (chain[t + 1] - mean);
     }
-    rho_1 /= (N * var + 1e-12);
+    rho_1 /= (n * var + 1e-12);
 
-    // 2. 简化版 ESS 公式 (针对单步自相关)
+    // 简化版 ESS 公式：N / (1 + 2*rho_1)
     // 论文话术：“Based on the initial monotone sequence estimator for ESS.”
-    return N / (1.0 + 2.0 * std::max(0.0, rho_1));
+    return static_cast<double>(n) / (1.0 + 2.0 * std::max(0.0, rho_1));
 }
 
 /**
- * 【业务一致性指标】Rank Fidelity Score
+ * @brief 【业务一致性指标】Rank Fidelity Score
  * 直接回答 Task 1：你的模型能否还原真实结果？
  * 返回 [0, 1]，1 表示完美还原淘汰序列。
  */
 inline double compute_fidelity(const Eigen::VectorXd& estimated_v,
-                               const Eigen::VectorXd& judge_s,
-                               int actual_elim_idx) {
-    // 简单逻辑：在当前估计下，淘汰者的综合排名
-    Eigen::VectorXd total = estimated_v + judge_s;
+                              const Eigen::VectorXd& judge_s,
+                              int actual_elim_idx) {
+    if (actual_elim_idx < 0) return 1.0; // 无淘汰周默认 1.0
 
-    // 统计有多少人的分低于淘汰者
-    int count = 0;
-    for (int i = 0; i < total.size(); ++i) {
-        if (total[i] < total[actual_elim_idx]) count++;
+    // 模拟总分
+    Eigen::VectorXd total = estimated_v + judge_s;
+    int n = static_cast<int>(total.size());
+
+    // 计算实际淘汰者在模型估计下的排名
+    int worse_than_loser = 0;
+    double loser_score = total[actual_elim_idx];
+
+    for (int i = 0; i < n; ++i) {
+        if (i == actual_elim_idx) continue;
+        if (total[i] < loser_score) worse_than_loser++;
     }
 
-    // 如果淘汰者分最低，count 应为 0
-    return 1.0 - (static_cast<double>(count) / (total.size() - 1));
+    // 如果 worse_than_loser 为 0，说明淘汰者得分最低，忠实度为 1.0
+    return 1.0 - (static_cast<double>(worse_than_loser) / (n - 1));
 }
 
 } // namespace diag

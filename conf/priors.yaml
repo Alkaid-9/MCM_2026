@@ -58,10 +58,10 @@ optimization_control:
 
   sampling:
     n_chains: 4                    # 并行链数量
-    n_samples: 50000               # 每条链的采样深度
+    n_samples: 500000               # 每条链的采样深度
     burn_in_pct: 0.2               # 丢弃前 20% 的预热样本
     thinning: 5                    # 稀疏化采样，减少自相关性
-    jump_size: 0.05                # Metropolis 步长因子
+    jump_size: 0.02                # Metropolis 步长因子
 
 # ------------------------------------------------------------------------------
 # 5. Convergence Thresholds (收敛性判据)

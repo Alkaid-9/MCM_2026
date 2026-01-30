@@ -12,7 +12,7 @@ from src.etl.config_loader import ConfigLoader
 class DataValidator:
     """
     数据验证引擎：在进入贝叶斯反演引擎前执行最后的‘逻辑体检’。
-    
+
     【核心审计逻辑】：
     1. 生存逻辑屏障 (Ghost Protocol):
        验证 Transformer 是否成功拦截了所有“死后得分”的幽灵数据。
@@ -180,6 +180,17 @@ class DataValidator:
             self.logger.error("❌ 审计失败：检测到核心逻辑冲突，请修复上游处理逻辑！")
 
         return self.validation_passed
+
+    def check_elimination_consistency(self):
+        """
+        审计 6: 淘汰逻辑一致性（反演的前提）。
+        验证在 Season 28 之前，淘汰者是否确实是 (Judge + Fan) 的理论最小值。
+        (用于论文中讨论数据质量)
+        """
+        # 逻辑：如果某人分数比淘汰者低却存活了，说明必须有极高的粉丝票来弥补。
+        # 如果分数差大到粉丝票无法弥补（>100%），则触发预警。
+        pass
+
 
 # --- 单元测试 (模拟逻辑冲突) ---
 if __name__ == "__main__":

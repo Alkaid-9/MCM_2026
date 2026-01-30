@@ -133,16 +133,18 @@ class DataTransformer:
         def _robust_scaler(x):
             if len(x) < 2: return np.zeros_like(x)
 
-            # 使用 numpy 计算以提速
             vals = x.values
             q25, q50, q75 = np.nanpercentile(vals, [25, 50, 75])
             iqr = q75 - q25
 
-            # 物理直觉：如果 IQR 极小，说明评委没有区分度，Z-Score 应趋近于 0
             if iqr < 1e-6:
-                return vals - q50 # 此时退化为中心化，但不缩放
+                return vals - q50
 
-            return (vals - q50) / iqr
+            # 引入高斯缩放因子
+            # 物理意义：使 Robust 估计在量级上与标准偏差对齐
+            # 1.3489 = 1 / (normal_ppf(0.75) - normal_ppf(0.25))
+            scaling_factor = 1.3489
+            return (vals - q50) / (iqr / scaling_factor)
 
         # 核心：按 (Season, Week) 分组计算，确保只在当场比赛内部比较
         df['score_z'] = df.groupby(['season', 'week_num'])['raw_score'].transform(_robust_scaler)
@@ -182,26 +184,59 @@ class DataTransformer:
 
     def detect_structural_break(self, df: pd.DataFrame):
         """
-        【O 奖护城河】结构性断裂检测。
-        实证检验 S28 规则变更对分数的统计学影响。
+        补一个制度断裂检测：S28 规则变更的统计学取证。
+        物理意义：通过三种非参数/参数检验，实证规则变更（S28）是否造成了统计学上的‘范式转移’。
+
+        学术包装：
+        1. H0_mean: 规则变更前后打分均值无显著差异。
+        2. H0_dist: 规则变更前后打分分布函数一致。
+        3. H0_var:  规则变更前后打分的一致性（信噪比）无显著变化。
         """
         trans_s = self.cfg._config['mechanisms']['transition_season']
 
-        pre_data = df[df['season'] < trans_s]['raw_score']
-        post_data = df[df['season'] >= trans_s]['raw_score']
+        # 提取关键字段，确保无空值干扰检测
+        test_data = df.dropna(subset=['raw_score', 'season'])
 
-        if len(pre_data) > 30 and len(post_data) > 30:
-            # 1. T-Test (均值差异)
-            t_stat, p_val = stats.ttest_ind(pre_data, post_data, equal_var=False)
+        pre_28 = test_data[test_data['season'] < trans_s]['raw_score']
+        post_28 = test_data[test_data['season'] >= trans_s]['raw_score']
 
-            # 2. KS-Test (分布形态差异)
-            ks_stat, ks_p = stats.ks_2samp(pre_data, post_data)
+        self.logger.info(f"--- 启动 S{trans_s} 制度断裂统计取证 ---")
 
-            self.logger.info(f"--- 结构性断裂检测 (S{trans_s}) ---")
-            self.logger.info(f"[Mean Shift] T-test p-value: {p_val:.4e} ({'显著' if p_val<0.05 else '不显著'})")
-            self.logger.info(f"[Dist Shift] KS-test p-value: {ks_p:.4e} ({'显著' if ks_p<0.05 else '不显著'})")
-        else:
-            self.logger.warning("样本量不足，跳过结构性断裂检测。")
+        if len(pre_28) < 50 or len(post_28) < 50:
+            self.logger.warning("样本量不足以支持高置信度统计检验。")
+            return
+
+        # 1. Welch's T-Test (均值漂移检验)
+        # 不假设方差相等，比普通 T-test 更鲁棒
+        t_stat, p_t = stats.ttest_ind(pre_28, post_28, equal_var=False)
+
+        # 2. Kolmogorov-Smirnov Test (分布一致性检验)
+        # 检测累积分布函数 (CDF) 的最大偏移，最能体现‘评分标准不连续性’
+        ks_stat, p_ks = stats.ks_2samp(pre_28, post_28)
+
+        # 3. Levene's Test (方差齐性检验 / 区分度审计)
+        # 物理意义：规则改变后，评委打分是变得更‘和稀泥’了还是更‘尖锐’了？
+        w_stat, p_lev = stats.levene(pre_28, post_28)
+
+        # --- 结果记录与论文素材生成 ---
+        results = {
+            "Mean Shift (T-test)": {"p": p_t, "stat": t_stat},
+            "Distribution Shift (KS-test)": {"p": p_ks, "stat": ks_stat},
+            "Variance Shift (Levene)": {"p": p_lev, "stat": w_stat}
+        }
+
+        self.logger.info(f"取证结果摘要 (Significant if p < 0.05):")
+        for test_name, res in results.items():
+            is_significant = res['p'] < 0.05
+            sig_label = "✅ 显著断裂" if is_significant else "❌ 无显著差异"
+            self.logger.info(f" - {test_name:30} | p={res['p']:.2e} | {sig_label}")
+
+        # 4. [高阶归因] 评分动量变化计算
+        # 计算前后两阶段的均值差，直接用于论文描述
+        diff_mean = post_28.mean() - pre_28.mean()
+        self.logger.info(f"评分均值漂移绝对值: {diff_mean:.4f} ({'打分膨胀' if diff_mean > 0 else '打分收缩'})")
+
+        return results
 
     def generate_inference_aggregates(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -227,6 +262,16 @@ class DataTransformer:
         # 3. 计算当周技术排名 (Task 1 核心约束输入)
         # method='min': 并列第一时，两者的 rank 都是 1
         agg['tech_rank'] = agg.groupby(['season', 'week_num'])['week_avg_score'].rank(ascending=False, method='min')
+
+        # 逻辑描述：
+        # 1. 只有 week_num <= eliminated_week 的选手属于该周的 Risk Set。
+        # 2. 如果 final_status == 'Withdrew' 且 week_num == eliminated_week，
+        #    该选手在该周通常不参与淘汰博弈（因为是主动退出），需在约束中排除。
+        def define_risk_set(df):
+            # 存活且非当周退赛的选手
+            df['in_competition'] = (df['week_num'] <= df['eliminated_week']) & \
+                                   ~((df['final_status'] == 'Withdrew') & (df['week_num'] == df['eliminated_week']))
+            return df
 
         return agg
 

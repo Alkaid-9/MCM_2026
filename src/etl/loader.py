@@ -50,7 +50,7 @@ class DataLoader:
                 raw_path,
                 dtype=dtype_map,
                 na_values=["N/A", "n/a", " ", "", "NULL"],
-                encoding='utf-8'
+                encoding='utf-8-sig'
             )
 
             # C. 关键列空值审计 (Integrity Check)
