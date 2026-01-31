@@ -1,113 +1,102 @@
 /**
- * MCM 2026 Problem C: High-Performance Numerical Utilities
- * Role: Simplex Projection, Log-Space Arithmetic, and Soft-Rank Kernels.
- * Standard: Academic Rigor & Industrial Scalability.
+ * @file math_utils.hpp
+ * @brief High-Performance Numerical Kernels (Interface Definition)
+ * @details Declares SIMD-optimized math routines. Implementations are in math_utils.cpp.
+ * @author MCM 2026 Problem C - "The Invisible Hand" Team
+ *
+ * [架构规范]:
+ * 1. 只有 Functor (仿函数) 和 Template 保留在头文件中，以支持内联和泛型。
+ * 2. 核心数学函数的实现移至 .cpp，减少编译依赖。
+ * 3. 默认参数 (Default Arguments) 必须且只能在这里定义。
  */
 
 #ifndef MATH_UTILS_HPP
 #define MATH_UTILS_HPP
 
-#include <Eigen/Dense>
-#include <unsupported/Eigen/SpecialFunctions> // 用于 lgamma (对数伽马函数)
+#include "types.hpp"
 #include <cmath>
-#include <algorithm>
-#include <vector>
+#include <Eigen/Dense>
 
 namespace mcm {
 namespace math {
 
-/**
- * @brief 数值稳定的 Sigmoid 函数
- * 物理意义：将分数差异映射为胜率概率，避免 e^x 溢出。
- * 分段处理逻辑：当 x 极小时，使用 exp(x)/(1+exp(x)) 防止分母过小。
- */
-inline double stable_sigmoid(double x, double tau) {
-    const double x_scaled = x / tau;
-    if (x_scaled >= 0) {
-        return 1.0 / (1.0 + std::exp(-x_scaled));
-    } else {
-        const double exp_x = std::exp(x_scaled);
-        return exp_x / (1.0 + exp_x);
-    }
-}
+    using namespace mcm::types;
 
-/**
- * @brief Soft-Rank 算子 (核心杀手锏)
- * 物理意义：将离散的阶梯排名函数光滑化。
- * 公式: Rank_i = 1 + \sum_{j!=i} Sigmoid((Score_j - Score_i) / tau)
- * 学术价值：解决了排名函数在贝叶斯推断中梯度为 0 的“断裂”问题。
- */
-inline Eigen::VectorXd compute_soft_ranks(const Eigen::VectorXd& scores, double tau = 0.02) {
-    const int n = static_cast<int>(scores.size());
-    Eigen::VectorXd soft_ranks = Eigen::VectorXd::Ones(n);
+    // =========================================================================
+    // 1. 向量化仿函数 (Functors for Eigen::unaryExpr)
+    // =========================================================================
+    // 注意：仿函数必须保留在头文件中，因为 Eigen 的 unaryExpr 是模板方法，
+    // 编译器需要在实例化时看到完整的 operator() 定义。
+    // =========================================================================
 
-    // O(N^2) 计算，但由于 N (选手数量) 通常小于 15，计算量完全可控
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            if (i == j) continue;
-            // 如果选手 j 分数高于 i，则 i 的排名增加 (排名数字变大，代表表现变差)
-            soft_ranks[i] += stable_sigmoid(scores[j] - scores[i], tau);
+    /**
+     * @struct StableSigmoidOp
+     * @brief 数值稳定的 Sigmoid 算子
+     * 物理意义: 将分数差转化为胜率概率 P(Win) = 1 / (1 + exp(-x/tau))
+     */
+    struct StableSigmoidOp {
+        Real tau;
+        explicit StableSigmoidOp(Real t) : tau(t) {}
+
+        // EIGEN_STRONG_INLINE 提示编译器强制内联，这在紧凑循环中至关重要
+        EIGEN_STRONG_INLINE Real operator()(Real x) const {
+            Real x_scaled = x / tau;
+            // 分段函数防止 exp 溢出 (Numerical Stability Guard)
+            if (x_scaled >= 0) {
+                return 1.0 / (1.0 + std::exp(-x_scaled));
+            } else {
+                Real exp_x = std::exp(x_scaled);
+                return exp_x / (1.0 + exp_x);
+            }
         }
+    };
+
+    // =========================================================================
+    // 2. 核心数学内核声明 (Function Declarations)
+    // =========================================================================
+    // 注意：不要在这里写函数体！只写分号。
+    // 注意：默认参数 (Default Arguments) 只能写在这里，不能写在 .cpp 里。
+    // =========================================================================
+
+    /**
+     * @brief Soft-Rank 算子 (矩阵广播加速版)
+     * 将离散排名平滑化。分数越高，Rank 数值越小 (1.0 = Best)。
+     * @param scores 评分向量
+     * @param tau 温度系数 (默认值来自 types.hpp)
+     */
+    VoteDistribution compute_soft_ranks(ConstVecRef scores, Real tau = constants::RANK_TAU_DEFAULT);
+
+    /**
+     * @brief 降序软排名别名 (Wrapper)
+     * 方便语义化调用，实际直接调用 compute_soft_ranks
+     */
+    inline VoteDistribution soft_rank_descending(ConstVecRef scores, Real tau = constants::RANK_TAU_DEFAULT) {
+        return compute_soft_ranks(scores, tau);
     }
-    return soft_ranks;
-}
 
-/**
- * @brief Log-Sum-Exp (LSE) 算子
- * 物理意义：在对数空间进行安全求和。
- * 解决痛点：直接计算 exp(p1) + exp(p2) 极易导致浮点数溢出。
- */
-inline double log_sum_exp(const Eigen::VectorXd& v) {
-    const double max_val = v.maxCoeff();
-    if (std::isinf(max_val)) return max_val;
+    /**
+     * @brief Log-Sum-Exp (LSE) 数值稳定版
+     * 在对数空间进行加法: log(sum(exp(v)))
+     */
+    Real log_sum_exp(ConstVecRef v);
 
-    double sum = 0.0;
-    for (int i = 0; i < v.size(); ++i) {
-        sum += std::exp(v[i] - max_val);
-    }
-    return max_val + std::log(sum);
-}
+    /**
+     * @brief 对数狄利克雷分布 PDF (Log-Dirichlet)
+     * 计算 P(v | alpha) 的对数概率密度
+     */
+    Real log_dirichlet_pdf(ConstVecRef v, ConstVecRef alpha);
 
-/**
- * @brief 对数狄利克雷概率密度 (Log-Dirichlet PDF)
- * 物理意义：量化“粉丝投票分布”偏离 Zipf's Law 先验的程度。
- * 公式: ln P(v|alpha) = ln Gamma(sum alpha) - sum ln Gamma(alpha) + sum (alpha-1) ln v
- */
-inline double log_dirichlet_pdf(const Eigen::VectorXd& v, const Eigen::VectorXd& alpha) {
-    // 强制物理边界检查：得票率必须为正
-    if ((v.array() <= 0).any()) return -1e18;
+    /**
+     * @brief 香农熵 (Shannon Entropy)
+     * H(p) = -sum(p * log2(p))
+     */
+    Real compute_entropy(ConstVecRef probs);
 
-    // 利用 Eigen 提供的对数伽马函数实现高性能计算
-    double term1 = std::lgamma(alpha.sum());
-    double term2 = alpha.array().lgamma().sum();
-    double term3 = ((alpha.array() - 1.0) * (v.array() + 1e-15).log()).sum();
-
-    return term1 - term2 + term3;
-}
-
-/**
- * @brief 信息论算子：香农熵 (Shannon Entropy)
- * 物理意义：量化反演结果的不确定性。
- * 应用：直接回答 Task 1 中关于“估计结果有多大把握”的度量。
- */
-inline double compute_entropy(const Eigen::VectorXd& probs) {
-    double entropy = 0.0;
-    for (int i = 0; i < probs.size(); ++i) {
-        if (probs[i] > 1e-12) {
-            entropy -= probs[i] * (std::log(probs[i]) / std::log(2.0));
-        }
-    }
-    return entropy;
-}
-
-/**
- * @brief Softmax 投影算子
- * 物理意义：将无约束的采样空间映射回概率单纯形 (Sum to 1)。
- */
-inline Eigen::VectorXd softmax(const Eigen::VectorXd& x) {
-    Eigen::VectorXd exp_x = (x.array() - x.maxCoeff()).exp();
-    return exp_x / exp_x.sum();
-}
+    /**
+     * @brief Softmax 投影算子
+     * 将 R^N 空间映射回单纯形 (Sum=1)
+     */
+    VoteDistribution softmax(ConstVecRef x);
 
 } // namespace math
 } // namespace mcm

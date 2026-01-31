@@ -153,6 +153,30 @@ src/bindings.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.s
 .PHONY : src/bindings.cpp.s
 
+src/diagnostics.o: src/diagnostics.cpp.o
+.PHONY : src/diagnostics.o
+
+# target to build an object file
+src/diagnostics.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o
+.PHONY : src/diagnostics.cpp.o
+
+src/diagnostics.i: src/diagnostics.cpp.i
+.PHONY : src/diagnostics.i
+
+# target to preprocess a source file
+src/diagnostics.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.i
+.PHONY : src/diagnostics.cpp.i
+
+src/diagnostics.s: src/diagnostics.cpp.s
+.PHONY : src/diagnostics.s
+
+# target to generate assembly for a file
+src/diagnostics.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.s
+.PHONY : src/diagnostics.cpp.s
+
 src/likelihood.o: src/likelihood.cpp.o
 .PHONY : src/likelihood.o
 
@@ -176,6 +200,30 @@ src/likelihood.s: src/likelihood.cpp.s
 src/likelihood.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.s
 .PHONY : src/likelihood.cpp.s
+
+src/math_utils.o: src/math_utils.cpp.o
+.PHONY : src/math_utils.o
+
+# target to build an object file
+src/math_utils.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o
+.PHONY : src/math_utils.cpp.o
+
+src/math_utils.i: src/math_utils.cpp.i
+.PHONY : src/math_utils.i
+
+# target to preprocess a source file
+src/math_utils.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.i
+.PHONY : src/math_utils.cpp.i
+
+src/math_utils.s: src/math_utils.cpp.s
+.PHONY : src/math_utils.s
+
+# target to generate assembly for a file
+src/math_utils.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/mcm_core_lib.dir/build.make CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.s
+.PHONY : src/math_utils.cpp.s
 
 src/mcmc_sampler.o: src/mcmc_sampler.cpp.o
 .PHONY : src/mcmc_sampler.o
@@ -213,9 +261,15 @@ help:
 	@echo "... src/bindings.o"
 	@echo "... src/bindings.i"
 	@echo "... src/bindings.s"
+	@echo "... src/diagnostics.o"
+	@echo "... src/diagnostics.i"
+	@echo "... src/diagnostics.s"
 	@echo "... src/likelihood.o"
 	@echo "... src/likelihood.i"
 	@echo "... src/likelihood.s"
+	@echo "... src/math_utils.o"
+	@echo "... src/math_utils.i"
+	@echo "... src/math_utils.s"
 	@echo "... src/mcmc_sampler.o"
 	@echo "... src/mcmc_sampler.i"
 	@echo "... src/mcmc_sampler.s"

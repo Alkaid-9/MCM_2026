@@ -3,8 +3,12 @@ file(REMOVE_RECURSE
   "/mnt/d/Code/MCM_2026/bin/mcm_core_lib.pdb"
   "CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o"
   "CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o.d"
+  "CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o"
+  "CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o.d"
   "CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o"
   "CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o.d"
+  "CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o"
+  "CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o.d"
   "CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o"
   "CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o.d"
 )

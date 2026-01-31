@@ -69,24 +69,10 @@ include CMakeFiles/mcm_core_lib.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/mcm_core_lib.dir/flags.make
 
-CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: CMakeFiles/mcm_core_lib.dir/flags.make
-CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp
-CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: CMakeFiles/mcm_core_lib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o -MF CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o.d -o CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp
-
-CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp > CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.i
-
-CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp -o CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.s
-
 CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o: CMakeFiles/mcm_core_lib.dir/flags.make
 CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o: /mnt/d/Code/MCM_2026/cpp_kernel/src/bindings.cpp
 CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o: CMakeFiles/mcm_core_lib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o -MF CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o.d -o CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/src/bindings.cpp
 
 CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.i: cmake_force
@@ -96,6 +82,20 @@ CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.i: cmake_force
 CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/d/Code/MCM_2026/cpp_kernel/src/bindings.cpp -o CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.s
+
+CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: CMakeFiles/mcm_core_lib.dir/flags.make
+CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp
+CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: CMakeFiles/mcm_core_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o -MF CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o.d -o CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp
+
+CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp > CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.i
+
+CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/d/Code/MCM_2026/cpp_kernel/src/mcmc_sampler.cpp -o CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.s
 
 CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o: CMakeFiles/mcm_core_lib.dir/flags.make
 CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o: /mnt/d/Code/MCM_2026/cpp_kernel/src/likelihood.cpp
@@ -111,23 +111,55 @@ CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/d/Code/MCM_2026/cpp_kernel/src/likelihood.cpp -o CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.s
 
+CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o: CMakeFiles/mcm_core_lib.dir/flags.make
+CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o: /mnt/d/Code/MCM_2026/cpp_kernel/src/math_utils.cpp
+CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o: CMakeFiles/mcm_core_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Building CXX object CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o -MF CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o.d -o CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/src/math_utils.cpp
+
+CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/d/Code/MCM_2026/cpp_kernel/src/math_utils.cpp > CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.i
+
+CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/d/Code/MCM_2026/cpp_kernel/src/math_utils.cpp -o CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.s
+
+CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o: CMakeFiles/mcm_core_lib.dir/flags.make
+CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o: /mnt/d/Code/MCM_2026/cpp_kernel/src/diagnostics.cpp
+CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o: CMakeFiles/mcm_core_lib.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o -MF CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o.d -o CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/src/diagnostics.cpp
+
+CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Preprocessing CXX source to CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /mnt/d/Code/MCM_2026/cpp_kernel/src/diagnostics.cpp > CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.i
+
+CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green "Compiling CXX source to assembly CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /mnt/d/Code/MCM_2026/cpp_kernel/src/diagnostics.cpp -o CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.s
+
 # Object files for target mcm_core_lib
 mcm_core_lib_OBJECTS = \
-"CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o" \
 "CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o" \
-"CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o"
+"CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o" \
+"CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o" \
+"CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o" \
+"CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o"
 
 # External object files for target mcm_core_lib
 mcm_core_lib_EXTERNAL_OBJECTS =
 
-/mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o
 /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o
+/mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o
 /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o
+/mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/src/math_utils.cpp.o
+/mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/src/diagnostics.cpp.o
 /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/build.make
 /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.so
 /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: /usr/lib/x86_64-linux-gnu/libpthread.a
 /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so: CMakeFiles/mcm_core_lib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX shared module /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --green --bold --progress-dir=/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX shared module /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/mcm_core_lib.dir/link.txt --verbose=$(VERBOSE)
 	/usr/bin/strip /mnt/d/Code/MCM_2026/bin/mcm_core_lib.cpython-310-x86_64-linux-gnu.so
 

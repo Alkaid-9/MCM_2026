@@ -1,98 +1,137 @@
 /**
- * MCM 2026 Problem C: Bayesian MCMC Sampler - Header Definition
- * Role: Orchestrating Parallel Metropolis-Hastings Chains on the Probability Simplex.
- * Standard: High-Performance Computing (HPC) / Bayesian Rigor / 23-Core Ready.
+ * @file mcmc_sampler.hpp
+ * @brief High-Performance Parallel MCMC Engine (Advanced Architecture)
+ * @details Implements Adaptive MH on the Simplex with Cache-Line Alignment.
+ * @author MCM 2026 Problem C - "The Invisible Hand" Team
  */
 
 #ifndef MCMC_SAMPLER_HPP
 #define MCMC_SAMPLER_HPP
 
 #include <vector>
-#include <string>
 #include <random>
 #include <Eigen/Dense>
-#include "math_utils.hpp"
+#include "likelihood.hpp"
+#include "diagnostics.hpp"
+#include "types.hpp"
 
 namespace mcm {
-namespace core {
+namespace engine {
 
-/**
- * @class MCMCSampler
- * @brief 隐变量反演核心引擎
- *
- * 职责：
- * 1. 在受约束的单纯形空间（Simplex）执行随机游走。
- * 2. 结合评委信号（Judge Signals）与危机信号（Jeopardy Mask）计算后验概率。
- * 3. 利用 OpenMP 实现多链并行，并计算收敛性指标。
- */
-class MCMCSampler {
-public:
+    using namespace mcm::types;
+
+    // =========================================================================
+    // 1. 配置与结果结构体 (DTO - Data Transfer Objects)
+    // =========================================================================
+
     /**
-     * @struct InferenceResult
-     * @brief 存储贝叶斯推断的统计全家桶
+     * @struct SamplerConfig
+     * @brief 采样器全量超参数配置
+     * [重构点]: 整合了似然函数刚度参数，支持从 Python 侧进行实验调优。
      */
-    struct InferenceResult {
-        Eigen::VectorXd posterior_mean;  // 后验均值（估算的粉丝票数占比）
-        Eigen::VectorXd posterior_std;   // 后验标准差（不确定性度量 1）
-        double shannon_entropy;          // 香农熵（不确定性度量 2）
-        double r_hat;                    // Gelman-Rubin 指标（收敛审计）
-        double acceptance_rate;          // 采样接受率
-        bool converged;                  // 是否通过收敛红线
+    struct SamplerConfig {
+        // --- 采样控制 ---
+        int n_chains = 23;            // 并行链数量 (建议对齐 CPU 核心)
+        int n_samples = 100000;       // 每条链采样总深度
+        int burn_in = 20000;          // 预热期 (不计入统计)
+        int thinning = 10;            // 稀疏化步长 (降低自相关性)
+        double init_step_size = 0.1;  // 初始扰动 Sigma
+        bool adaptive = true;         // 是否开启自适应步长
+        int seed = 2026;              // 全局随机种子
+        bool return_traces = false;   // 是否回传全量轨迹 (用于画 Trace Plot)
+
+        // --- 似然函数刚度 (Stiffness) ---
+        // 物理意义：控制“历史事实”对模型推断的约束强度
+        double rank_tau = 0.05;       // Soft-Rank 平滑温度
+        double elim_penalty = 1000.0; // 淘汰逻辑惩罚刚度 (Hard Constraint)
+        double jeopardy_penalty = 200.0; // 危险区惩罚刚度 (Soft Constraint)
+        double entropy_weight = 0.05; // 最大熵正则化权重 (Occam's Razor)
     };
 
-    // 构造函数：注入随机种子，初始化状态
-    explicit MCMCSampler(int seed = 2026);
-
     /**
-     * @brief 并行推理引擎入口 (8参数对齐版)
-     *
-     * @param judge_signals  评委打分的 Z-Score 向量
-     * @param elim_idx       当周真实淘汰者的索引 (-1 代表无淘汰周)
-     * @param jeopardy_mask  危险区/倒数两名标记向量 (1-在危险区, 0-安全)
-     * @param prior_mu       贝叶斯先验均值向量 (来自 Zipf's Law)
-     * @param mechanism      赛制类型 ("RANK" 或 "PERCENT")
-     * @param n_chains       并行链数量 (默认适配 23 核)
-     * @param n_samples      每条链的采样深度
-     * @param jump_size      Metropolis 步长因子
+     * @struct InferenceResult
+     * @brief 贝叶斯推断最终报告
      */
-    InferenceResult run_parallel_inference(
-        const Eigen::VectorXd& judge_signals,
-        int elim_idx,
-        const Eigen::VectorXi& jeopardy_mask,
-        const Eigen::VectorXd& prior_mu,
-        const std::string& mechanism,
-        int n_chains = 23,
-        int n_samples = 100000,
-        double jump_size = 0.05
-    );
+    struct InferenceResult {
+        Eigen::VectorXd posterior_mean;   // 潜变量后验均值
+        Eigen::VectorXd posterior_std;    // 估计不确定性 (StdDev)
+        double r_hat;                     // 最大收敛因子 (Max PSRF)
+        double ess;                       // 有效样本量估计
+        double acceptance_rate;           // 链平均接受率
+        double fidelity_score;            // 业务保真度 (淘汰匹配率)
+        bool converged;                   // 是否通过收敛审计
 
-private:
-    int seed_; // 基础随机种子
+        // 全量轨迹数据：[Chain][Sample][Dimension]
+        // 仅在 return_traces = true 时填充
+        std::vector<std::vector<Eigen::VectorXd>> traces;
+    };
 
-    /**
-     * @brief 核心似然函数内核
-     * 逻辑：Outcome ~ Combined_Score(Judge, Fan_Vote)
-     */
-    double compute_log_likelihood(
-        const Eigen::VectorXd& v,
-        const Eigen::VectorXd& j,
-        int elim_idx,
-        const Eigen::VectorXi& jeopardy_mask,
-        const std::string& mech
-    );
+    // =========================================================================
+    // 2. 核心采样器类
+    // =========================================================================
 
-    /**
-     * @brief 建议分布：单纯形上的随机游走
-     * 物理意义：在 log-space 扰动后通过 Softmax 投影回单纯形
-     */
-    Eigen::VectorXd propose_next_state(
-        const Eigen::VectorXd& current_v,
-        double jump_size,
-        std::mt19937& gen
-    );
-};
+    class MCMCSampler {
+    public:
+        explicit MCMCSampler(const SamplerConfig& config) : cfg_(config) {}
 
-} // namespace core
+        /**
+         * @brief 并行推断入口
+         * 通过 OpenMP 调度 23 路独立采样流，并执行多维度 R-hat 审计。
+         */
+        InferenceResult run_parallel_inference(
+            const Eigen::VectorXd& judge_scores,
+            int elim_idx,
+            const Eigen::VectorXi& jeopardy_mask,
+            const Eigen::VectorXd& prior_mean,
+            MechanismType mech_type
+        );
+
+    private:
+        SamplerConfig cfg_;
+
+        /**
+         * @struct ChainState
+         * @brief 线程局部状态 (硬件优化版)
+         * alignas(64) 强制内存对齐到缓存行，消除 False Sharing，保障 23 核满载效率。
+         */
+        struct alignas(64) ChainState {
+            Eigen::VectorXd current_position;
+            double current_log_lik;
+            double step_size;
+            long long accepted_count = 0;
+            std::vector<Eigen::VectorXd> samples;
+        };
+
+        /**
+         * @brief 单链执行单元 (Metropolis-Hastings Kernel)
+         */
+        ChainState run_single_chain(
+            int thread_id,
+            const Eigen::VectorXd& start_pos,
+            const LikelihoodEvaluator& evaluator,
+            const Eigen::VectorXd& judge_scores,
+            int elim_idx,
+            const Eigen::VectorXi& jeopardy_mask,
+            MechanismType mech_type
+        ) const;
+
+        /**
+         * @brief 建议分布：单纯形上的对数空间映射游走
+         * 物理意义：将有约束的单纯形问题转化为无约束的 R^N 空间高斯游走。
+         */
+        Eigen::VectorXd propose_log_space_move(
+            const Eigen::VectorXd& current,
+            double step_size,
+            std::mt19937_64& rng
+        ) const;
+
+        /**
+         * @brief 自适应律 (Target Acceptance = 0.234)
+         */
+        void adapt_step_size(double& step_size, double recent_acceptance_rate) const;
+    };
+
+} // namespace engine
 } // namespace mcm
 
 #endif // MCMC_SAMPLER_HPP

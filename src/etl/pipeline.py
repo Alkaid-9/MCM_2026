@@ -1,11 +1,21 @@
-"""
-MCM 2026 Problem C: ETL Stage Orchestrator (The Industrial Assembly Line)
-Role: Sequential execution of data loading, parsing, transformation, factor building, and auditing.
-Standard: O-Prize Quality / Production-Grade Robustness.
-"""
+# ==============================================================================
+# src/etl/pipeline.py
+# Role: ETL Stage Orchestrator (The Industrial Assembly Line)
+# Function: Sequential execution of data loading, parsing, transformation,
+#           forensics, and factor building.
+# Standard: O-Prize Quality / Production-Grade Robustness.
+# ==============================================================================
 
 import logging
 import pandas as pd
+import sys
+from pathlib import Path
+
+# 路径自适应：确保模块导入路径正确
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
 from src.etl.config_loader import ConfigLoader
 from src.etl.loader import DataLoader
 from src.etl.parsers import TextParser
@@ -18,13 +28,10 @@ def run_etl_stage() -> pd.DataFrame:
     """
     Stage 1 全流程调度：从 Bronze (原始数据) 生产出 Gold (因子库)。
 
-    流水线工序：
-    1. Extraction: 加载强类型原始数据。
-    2. Parsing: 执行文本解析与异常校正（处理 Week 110 等脏数据）。
-    3. Transformation: 维度变换、评委映射、Robust Z-Score 去通胀。
-    4. Auditing: 逻辑一致性红线审计（失败则熔断）。
-    5. Factor Engineering: 生成 Alpha 因子与归因特征。
-    6. Persistence: 保存 Silver (清洗后) 与 Gold (因子库) 数据。
+    【核心改进】：
+    1. 颗粒度对齐：确保从 Transformers 出来的 df_silver 是选手-周级的聚合表。
+    2. 解决 KeyError：通过先聚合、再因子化的顺序，确保 'week_avg_score' 存在。
+    3. 逻辑分层：清晰定义了从原始清洗到统计取证，再到特征工程的流水线逻辑。
     """
     logger = logging.getLogger("ETL_PIPELINE")
     logger.info("=" * 80)
@@ -32,67 +39,76 @@ def run_etl_stage() -> pd.DataFrame:
     logger.info("=" * 80)
 
     try:
-        # 实例化组件
+        # --- A. 实例化工程组件 ---
+        config = ConfigLoader()
         loader = DataLoader()
         parser = TextParser()
         factory = FeatureFactory()
 
-        # --- STEP 1: 数据提取 (Bronze Layer) ---
-        logger.info("[Step 1/6] 正在提取 Bronze 原始数据...")
-        df_bronze = loader.load_bronze_data()
+        # --- STEP 1: 原始数据提取 (Bronze Layer) ---
+        logger.info("[Step 1/6] 加载强类型原始数据...")
+        df_raw = loader.load_bronze_data()
 
-        # --- STEP 2: 文本解析与清洗 (Refining) ---
-        logger.info("[Step 2/6] 执行实体标准化与生存标签解析...")
-        df_parsed = parser.standardize_entities(df_bronze)
+        # --- STEP 2: 文本精炼与生存标签解析 ---
+        logger.info("[Step 2/6] 执行实体标准化与 Censorship 标记提取...")
+        df_parsed = parser.standardize_entities(df_raw)
         df_parsed = parser.parse_survival_labels(df_parsed)
 
-        # --- STEP 3: 核心统计变换 (Transformation) ---
-        logger.info("[Step 3/6] 执行 Wide-to-Long 变换与单集标准化 (去通胀)...")
-        # 这里调用了我们在 transformers.py 中重构的高级流水线
-        df_silver = run_transform_pipeline(df_parsed)
+        # --- STEP 3: 核心转换与周度信号聚合 (Crucial Transformation) ---
+        # 【物理意义】：这里完成了从“评委级长表”向“选手级聚合表”的跨越
+        # 返回的 df_agg 已经包含了 'week_avg_score'，这是解决 KeyError 的关键
+        logger.info("[Step 3/6] 执行维度展平、标准化与信号聚合...")
+        df_agg_candidate = run_transform_pipeline(df_parsed)
 
-        # --- STEP 4: 数据质量红线审计 (Validation) ---
-        logger.info("[Step 4/6] 启动逻辑一致性红线审计 (Silver Layer Audit)...")
-        validator = DataValidator(df_silver)
+        # 将聚合后的初步数据持久化为 Silver 层（供审计使用）
+        loader.save_processed_data(df_agg_candidate, layer='silver')
+
+        # --- STEP 4: 因子工程 (Gold Layer Generation) ---
+        # 【物理意义】：在纯净的聚合信号上构建动量因子、红利因子、背景因子
+        logger.info("[Step 4/6] 正在基于聚合信号构建黄金因子库 (Alpha/Momentum)...")
+        # factory 现在接收到的是包含 week_avg_score 的聚合表，逻辑完美闭环
+        df_gold = factory.generate_gold_library(df_agg_candidate)
+
+        # --- STEP 5: 数据质量红线审计 ---
+        logger.info("[Step 5/6] 启动数学前置条件审计与一致性检查...")
+        validator = DataValidator(df_gold)
         if not validator.run_all():
-            logger.critical("❌ 数据审计未通过！检测到逻辑冲突，Pipeline 强制熔断。")
-            raise ValueError("Data Integrity Violation in Silver Layer.")
+            logger.critical("❌ 数据审计失败：检测到核心逻辑冲突，Pipeline 强制熔断！")
+            raise ValueError("Data Integrity Violation in ETL Stage.")
 
-        # 保存 Silver 层数据（清洗完成，待因子化）
-        loader.save_processed_data(df_silver, layer='silver')
+        # 因子正交性审计 (回答 Task 3 关注点)
+        # 物理意义：验证“技术分”与“舞伴加成”是否具有独立的解释空间
+        if 'partner_alpha' in df_gold.columns and 'week_avg_score' in df_gold.columns:
+            correlation = df_gold[['partner_alpha', 'week_avg_score']].corr().iloc[0, 1]
+            logger.info(f"📊 因子正交性审计：Partner_Alpha 与 Week_Score 相关性 = {correlation:.4f}")
+            if abs(correlation) > 0.85:
+                logger.warning("⚠️ 因子共线性过高，建议在回归模型中引入正则化。")
 
-        # --- STEP 5: 高阶因子构建 (Alpha Generation) ---
-        logger.info("[Step 5/6] 正在构建黄金因子库 (Partner Alpha, Momentum, SHAP Features)...")
-        # 物理意义：将统计信号转化为因果特征
-        df_gold = factory.generate_gold_library(df_silver)
-
-        # --- STEP 6: 数据持久化 (Gold Layer) ---
-        logger.info("[Step 6/6] 正在将黄金因子库持久化至磁盘...")
+        # --- STEP 6: 结果持久化 (Gold Layer) ---
+        logger.info("[Step 6/6] 黄金因子库落盘...")
         loader.save_processed_data(df_gold, layer='gold')
 
+        # --- 打印运行摘要 ---
         logger.info("=" * 80)
-        logger.info(f"✅ STAGE 1 成功结束！")
-        logger.info(f"   最终观测点数量: {len(df_gold)}")
-        logger.info(f"   特征总维度: {df_gold.shape[1]}")
-        logger.info(f"   输出路径: {ConfigLoader().get_path('gold_factors')}")
+        logger.info("✅ STAGE 1 成功结束！")
+        logger.info(f"观测样本总数 (选手-周): {len(df_gold)}")
+        logger.info(f"因子特征总维度:      {df_gold.shape[1]}")
+        logger.info(f"输出路径:           {config.get_path('gold_factors')}")
         logger.info("=" * 80)
 
         return df_gold
 
     except Exception as e:
-        logger.critical(f"💥 ETL 阶段发生致命崩溃: {str(e)}", exc_info=True)
+        logger.critical(f"🔥 ETL 阶段发生致命崩溃: {str(e)}", exc_info=True)
         raise
 
-# 逻辑：检查 Partner Alpha 和原始分数的相关性
-# 如果相关性 > 0.9，说明因子是冗余的。
-# 但在这里，Alpha 是历史值，Score 是当前值，理论上是低相关的，这证明Alpha具有独立预测能力。
-correlation = gold_df[['partner_alpha', 'week_avg_score']].corr().iloc[0, 1]
-logger.info(f"因子正交性审计：Alpha 与 Score 相关性 = {correlation:.4f}")
 
+# --- 独立运行入口 ---
 if __name__ == "__main__":
-    # 配置根日志
+    # 配置控制台日志
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s'
     )
-    run_etl_stage()
+    # 点火运行
+    df_result = run_etl_stage()

@@ -5,7 +5,7 @@ events:
     kind: "message-v1"
     backtrace:
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineSystem.cmake:233 (message)"
-      - "CMakeLists.txt:2 (project)"
+      - "CMakeLists.txt:6 (project)"
     message: |
       The system is: Linux - 6.6.87.2-microsoft-standard-WSL2 - x86_64
   -
@@ -14,7 +14,7 @@ events:
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineCXXCompiler.cmake:126 (CMAKE_DETERMINE_COMPILER_ID)"
-      - "CMakeLists.txt:2 (project)"
+      - "CMakeLists.txt:6 (project)"
     message: |
       Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
       Compiler: /usr/bin/c++ 
@@ -35,12 +35,12 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:57 (try_compile)"
       - "/usr/share/cmake-3.28/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "CMakeLists.txt:2 (project)"
+      - "CMakeLists.txt:6 (project)"
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl"
-      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl"
+      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT"
+      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -49,15 +49,13 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl'
+        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_26bf5/fast
-        gmake: Warning: File 'Makefile' has modification time 0.6 s in the future
-        /usr/bin/gmake  -f CMakeFiles/cmTC_26bf5.dir/build.make CMakeFiles/cmTC_26bf5.dir/build
-        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl'
-        gmake[1]: Warning: File 'CMakeFiles/cmTC_26bf5.dir/flags.make' has modification time 0.58 s in the future
-        Building CXX object CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o
-        /usr/bin/c++   -v -o CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4c2f9/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_4c2f9.dir/build.make CMakeFiles/cmTC_4c2f9.dir/build
+        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT'
+        Building CXX object CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o
+        /usr/bin/c++   -v -o CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
@@ -67,8 +65,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib zstd
         gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) 
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_26bf5.dir/'
-         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_26bf5.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/cclgXwoy.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_4c2f9.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_4c2f9.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/cchuUigk.s
         GNU C++17 (Ubuntu 13.3.0-6ubuntu2~24.04) version 13.3.0 (x86_64-linux-gnu)
         	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
         
@@ -89,15 +87,15 @@ events:
          /usr/include
         End of search list.
         Compiler executable checksum: c81c05345ce537099dafd5580045814a
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_26bf5.dir/'
-         as -v --64 -o CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o /tmp/cclgXwoy.s
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_4c2f9.dir/'
+         as -v --64 -o CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o /tmp/cchuUigk.s
         GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.'
-        Linking CXX executable cmTC_26bf5
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_26bf5.dir/link.txt --verbose=1
-        /usr/bin/c++  -v CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_26bf5 
+        COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.'
+        Linking CXX executable cmTC_4c2f9
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4c2f9.dir/link.txt --verbose=1
+        /usr/bin/c++  -v CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_4c2f9 
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
@@ -110,12 +108,10 @@ events:
         gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) 
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_26bf5' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_26bf5.'
-         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccb4hkLW.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_26bf5 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
-        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_26bf5' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_26bf5.'
-        gmake[1]: warning:  Clock skew detected.  Your build may be incomplete.
-        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl'
-        gmake: warning:  Clock skew detected.  Your build may be incomplete.
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_4c2f9' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_4c2f9.'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccO3Jxaq.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_4c2f9 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o
+        COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_4c2f9' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_4c2f9.'
+        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT'
         
       exitCode: 0
   -
@@ -123,7 +119,7 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:127 (message)"
       - "/usr/share/cmake-3.28/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "CMakeLists.txt:2 (project)"
+      - "CMakeLists.txt:6 (project)"
     message: |
       Parsed CXX implicit include dir info: rv=done
         found start of include info
@@ -151,19 +147,17 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/CMakeDetermineCompilerABI.cmake:159 (message)"
       - "/usr/share/cmake-3.28/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
-      - "CMakeLists.txt:2 (project)"
+      - "CMakeLists.txt:6 (project)"
     message: |
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl']
+        ignore line: [Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_26bf5/fast]
-        ignore line: [gmake: Warning: File 'Makefile' has modification time 0.6 s in the future]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_26bf5.dir/build.make CMakeFiles/cmTC_26bf5.dir/build]
-        ignore line: [gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jBRJQl']
-        ignore line: [gmake[1]: Warning: File 'CMakeFiles/cmTC_26bf5.dir/flags.make' has modification time 0.58 s in the future]
-        ignore line: [Building CXX object CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o]
-        ignore line: [/usr/bin/c++   -v -o CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_4c2f9/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_4c2f9.dir/build.make CMakeFiles/cmTC_4c2f9.dir/build]
+        ignore line: [gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-2L7GmT']
+        ignore line: [Building CXX object CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o]
+        ignore line: [/usr/bin/c++   -v -o CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o -c /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
@@ -173,8 +167,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib zstd]
         ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_26bf5.dir/']
-        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_26bf5.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/cclgXwoy.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_4c2f9.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE /usr/share/cmake-3.28/Modules/CMakeCXXCompilerABI.cpp -quiet -dumpdir CMakeFiles/cmTC_4c2f9.dir/ -dumpbase CMakeCXXCompilerABI.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -version -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/cchuUigk.s]
         ignore line: [GNU C++17 (Ubuntu 13.3.0-6ubuntu2~24.04) version 13.3.0 (x86_64-linux-gnu)]
         ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
         ignore line: []
@@ -195,15 +189,15 @@ events:
         ignore line: [ /usr/include]
         ignore line: [End of search list.]
         ignore line: [Compiler executable checksum: c81c05345ce537099dafd5580045814a]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_26bf5.dir/']
-        ignore line: [ as -v --64 -o CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o /tmp/cclgXwoy.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_4c2f9.dir/']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o /tmp/cchuUigk.s]
         ignore line: [GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.']
-        ignore line: [Linking CXX executable cmTC_26bf5]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_26bf5.dir/link.txt --verbose=1]
-        ignore line: [/usr/bin/c++  -v CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_26bf5 ]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.']
+        ignore line: [Linking CXX executable cmTC_4c2f9]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_4c2f9.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/c++  -v CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o -o cmTC_4c2f9 ]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper]
@@ -216,13 +210,13 @@ events:
         ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) ]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_26bf5' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_26bf5.']
-        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccb4hkLW.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_26bf5 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-v' '-o' 'cmTC_4c2f9' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-dumpdir' 'cmTC_4c2f9.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccO3Jxaq.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_4c2f9 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o -lstdc++ -lm -lgcc_s -lgcc -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o]
           arg [/usr/libexec/gcc/x86_64-linux-gnu/13/collect2] ==> ignore
           arg [-plugin] ==> ignore
           arg [/usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so] ==> ignore
           arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper] ==> ignore
-          arg [-plugin-opt=-fresolution=/tmp/ccb4hkLW.res] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccO3Jxaq.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lc] ==> ignore
@@ -240,7 +234,7 @@ events:
           arg [-znow] ==> ignore
           arg [-zrelro] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_26bf5] ==> ignore
+          arg [cmTC_4c2f9] ==> ignore
           arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o]
           arg [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o] ==> obj [/usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o]
@@ -252,7 +246,7 @@ events:
           arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
           arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
           arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..]
-          arg [CMakeFiles/cmTC_26bf5.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
+          arg [CMakeFiles/cmTC_4c2f9.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
           arg [-lstdc++] ==> lib [stdc++]
           arg [-lm] ==> lib [m]
           arg [-lgcc_s] ==> lib [gcc_s]
@@ -289,12 +283,12 @@ events:
       - "/home/alkaid/miniconda3/envs/solver/share/cmake/pybind11/pybind11Common.cmake:368 (_pybind11_return_if_cxx_and_linker_flags_work)"
       - "/home/alkaid/miniconda3/envs/solver/share/cmake/pybind11/pybind11Common.cmake:435 (_pybind11_generate_lto)"
       - "/home/alkaid/miniconda3/envs/solver/share/cmake/pybind11/pybind11Config.cmake:250 (include)"
-      - "CMakeLists.txt:17 (find_package)"
+      - "CMakeLists.txt:23 (find_package)"
     checks:
       - "Performing Test HAS_FLTO"
     directories:
-      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jPUqH4"
-      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jPUqH4"
+      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-R4NnLi"
+      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-R4NnLi"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -304,21 +298,17 @@ events:
       variable: "HAS_FLTO"
       cached: true
       stdout: |
-        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jPUqH4'
+        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-R4NnLi'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_95b31/fast
-        gmake: Warning: File 'Makefile' has modification time 0.53 s in the future
-        /usr/bin/gmake  -f CMakeFiles/cmTC_95b31.dir/build.make CMakeFiles/cmTC_95b31.dir/build
-        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jPUqH4'
-        gmake[1]: Warning: File 'CMakeFiles/cmTC_95b31.dir/flags.make' has modification time 0.51 s in the future
-        Building CXX object CMakeFiles/cmTC_95b31.dir/src.cxx.o
-        /usr/bin/c++ -DHAS_FLTO  -std=c++17   -flto -fno-fat-lto-objects -o CMakeFiles/cmTC_95b31.dir/src.cxx.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jPUqH4/src.cxx
-        Linking CXX executable cmTC_95b31
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_95b31.dir/link.txt --verbose=1
-        /usr/bin/c++ CMakeFiles/cmTC_95b31.dir/src.cxx.o -o cmTC_95b31  -flto 
-        gmake[1]: warning:  Clock skew detected.  Your build may be incomplete.
-        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-jPUqH4'
-        gmake: warning:  Clock skew detected.  Your build may be incomplete.
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_90288/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_90288.dir/build.make CMakeFiles/cmTC_90288.dir/build
+        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-R4NnLi'
+        Building CXX object CMakeFiles/cmTC_90288.dir/src.cxx.o
+        /usr/bin/c++ -DHAS_FLTO  -std=c++17   -flto -fno-fat-lto-objects -o CMakeFiles/cmTC_90288.dir/src.cxx.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-R4NnLi/src.cxx
+        Linking CXX executable cmTC_90288
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_90288.dir/link.txt --verbose=1
+        /usr/bin/c++ CMakeFiles/cmTC_90288.dir/src.cxx.o -o cmTC_90288  -flto 
+        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-R4NnLi'
         
       exitCode: 0
   -
@@ -326,11 +316,11 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/FindOpenMP.cmake:219 (try_compile)"
       - "/usr/share/cmake-3.28/Modules/FindOpenMP.cmake:486 (_OPENMP_GET_FLAGS)"
-      - "CMakeLists.txt:18 (find_package)"
+      - "CMakeLists.txt:30 (find_package)"
     description: "Detecting CXX OpenMP compiler info"
     directories:
-      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk"
-      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk"
+      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR"
+      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -340,15 +330,13 @@ events:
       variable: "OpenMP_COMPILE_RESULT_CXX_fopenmp"
       cached: true
       stdout: |
-        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk'
+        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_97709/fast
-        gmake: Warning: File 'Makefile' has modification time 0.46 s in the future
-        /usr/bin/gmake  -f CMakeFiles/cmTC_97709.dir/build.make CMakeFiles/cmTC_97709.dir/build
-        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk'
-        gmake[1]: Warning: File 'CMakeFiles/cmTC_97709.dir/flags.make' has modification time 0.44 s in the future
-        Building CXX object CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o
-        /usr/bin/c++   -fopenmp -v -std=c++17 -o CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk/OpenMPTryFlag.cpp
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_60c37/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_60c37.dir/build.make CMakeFiles/cmTC_60c37.dir/build
+        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR'
+        Building CXX object CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o
+        /usr/bin/c++   -fopenmp -v -std=c++17 -o CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR/OpenMPTryFlag.cpp
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa
@@ -358,8 +346,8 @@ events:
         Thread model: posix
         Supported LTO compression algorithms: zlib zstd
         gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) 
-        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_97709.dir/'
-         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D_REENTRANT /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk/OpenMPTryFlag.cpp -quiet -dumpdir CMakeFiles/cmTC_97709.dir/ -dumpbase OpenMPTryFlag.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -std=c++17 -version -fopenmp -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccus3BoJ.s
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_60c37.dir/'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D_REENTRANT /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR/OpenMPTryFlag.cpp -quiet -dumpdir CMakeFiles/cmTC_60c37.dir/ -dumpbase OpenMPTryFlag.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -std=c++17 -version -fopenmp -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccJLJhWs.s
         GNU C++17 (Ubuntu 13.3.0-6ubuntu2~24.04) version 13.3.0 (x86_64-linux-gnu)
         	compiled by GNU C version 13.3.0, GMP version 6.3.0, MPFR version 4.2.1, MPC version 1.3.1, isl version isl-0.26-GMP
         
@@ -380,15 +368,15 @@ events:
          /usr/include
         End of search list.
         Compiler executable checksum: c81c05345ce537099dafd5580045814a
-        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_97709.dir/'
-         as -v --64 -o CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o /tmp/ccus3BoJ.s
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_60c37.dir/'
+         as -v --64 -o CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o /tmp/ccJLJhWs.s
         GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
-        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.'
-        Linking CXX executable cmTC_97709
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_97709.dir/link.txt --verbose=1
-        /usr/bin/c++  -fopenmp -v CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o -o cmTC_97709  -v 
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.'
+        Linking CXX executable cmTC_60c37
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_60c37.dir/link.txt --verbose=1
+        /usr/bin/c++  -fopenmp -v CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o -o cmTC_60c37  -v 
         Using built-in specs.
         COLLECT_GCC=/usr/bin/c++
         COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper
@@ -402,12 +390,10 @@ events:
         COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/
         LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/
         Reading specs from /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.spec
-        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_97709' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_97709.'
-         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccmmgis8.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_97709 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadbegin.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadend.o
-        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_97709' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_97709.'
-        gmake[1]: warning:  Clock skew detected.  Your build may be incomplete.
-        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk'
-        gmake: warning:  Clock skew detected.  Your build may be incomplete.
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_60c37' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_60c37.'
+         /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccxiu3Jl.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_60c37 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadbegin.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadend.o
+        COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_60c37' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_60c37.'
+        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR'
         
       exitCode: 0
   -
@@ -415,19 +401,17 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/FindOpenMP.cmake:262 (message)"
       - "/usr/share/cmake-3.28/Modules/FindOpenMP.cmake:486 (_OPENMP_GET_FLAGS)"
-      - "CMakeLists.txt:18 (find_package)"
+      - "CMakeLists.txt:30 (find_package)"
     message: |
       Parsed CXX OpenMP implicit link information from above output:
         link line regex: [^( *|.*[/\\])(ld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
-        ignore line: [Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk']
+        ignore line: [Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR']
         ignore line: []
-        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_97709/fast]
-        ignore line: [gmake: Warning: File 'Makefile' has modification time 0.46 s in the future]
-        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_97709.dir/build.make CMakeFiles/cmTC_97709.dir/build]
-        ignore line: [gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk']
-        ignore line: [gmake[1]: Warning: File 'CMakeFiles/cmTC_97709.dir/flags.make' has modification time 0.44 s in the future]
-        ignore line: [Building CXX object CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o]
-        ignore line: [/usr/bin/c++   -fopenmp -v -std=c++17 -o CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk/OpenMPTryFlag.cpp]
+        ignore line: [Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_60c37/fast]
+        ignore line: [/usr/bin/gmake  -f CMakeFiles/cmTC_60c37.dir/build.make CMakeFiles/cmTC_60c37.dir/build]
+        ignore line: [gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR']
+        ignore line: [Building CXX object CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o]
+        ignore line: [/usr/bin/c++   -fopenmp -v -std=c++17 -o CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR/OpenMPTryFlag.cpp]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [OFFLOAD_TARGET_NAMES=nvptx-none:amdgcn-amdhsa]
@@ -437,8 +421,8 @@ events:
         ignore line: [Thread model: posix]
         ignore line: [Supported LTO compression algorithms: zlib zstd]
         ignore line: [gcc version 13.3.0 (Ubuntu 13.3.0-6ubuntu2~24.04) ]
-        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_97709.dir/']
-        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D_REENTRANT /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-PjJtlk/OpenMPTryFlag.cpp -quiet -dumpdir CMakeFiles/cmTC_97709.dir/ -dumpbase OpenMPTryFlag.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -std=c++17 -version -fopenmp -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccus3BoJ.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_60c37.dir/']
+        ignore line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/cc1plus -quiet -v -imultiarch x86_64-linux-gnu -D_GNU_SOURCE -D_REENTRANT /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-GSZ5mR/OpenMPTryFlag.cpp -quiet -dumpdir CMakeFiles/cmTC_60c37.dir/ -dumpbase OpenMPTryFlag.cpp.cpp -dumpbase-ext .cpp -mtune=generic -march=x86-64 -std=c++17 -version -fopenmp -fasynchronous-unwind-tables -fstack-protector-strong -Wformat -Wformat-security -fstack-clash-protection -fcf-protection -o /tmp/ccJLJhWs.s]
         ignore line: [GNU C++17 (Ubuntu 13.3.0-6ubuntu2~24.04) version 13.3.0 (x86_64-linux-gnu)]
         ignore line: [	compiled by GNU C version 13.3.0  GMP version 6.3.0  MPFR version 4.2.1  MPC version 1.3.1  isl version isl-0.26-GMP]
         ignore line: []
@@ -459,15 +443,15 @@ events:
         ignore line: [ /usr/include]
         ignore line: [End of search list.]
         ignore line: [Compiler executable checksum: c81c05345ce537099dafd5580045814a]
-        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_97709.dir/']
-        ignore line: [ as -v --64 -o CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o /tmp/ccus3BoJ.s]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_60c37.dir/']
+        ignore line: [ as -v --64 -o CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o /tmp/ccJLJhWs.s]
         ignore line: [GNU assembler version 2.42 (x86_64-linux-gnu) using BFD version (GNU Binutils for Ubuntu) 2.42]
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
-        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.']
-        ignore line: [Linking CXX executable cmTC_97709]
-        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_97709.dir/link.txt --verbose=1]
-        ignore line: [/usr/bin/c++  -fopenmp -v CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o -o cmTC_97709  -v ]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-std=c++17' '-o' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o' '-c' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.']
+        ignore line: [Linking CXX executable cmTC_60c37]
+        ignore line: [/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_60c37.dir/link.txt --verbose=1]
+        ignore line: [/usr/bin/c++  -fopenmp -v CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o -o cmTC_60c37  -v ]
         ignore line: [Using built-in specs.]
         ignore line: [COLLECT_GCC=/usr/bin/c++]
         ignore line: [COLLECT_LTO_WRAPPER=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper]
@@ -481,13 +465,13 @@ events:
         ignore line: [COMPILER_PATH=/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/13/:/usr/libexec/gcc/x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/]
         ignore line: [LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/13/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib/:/lib/x86_64-linux-gnu/:/lib/../lib/:/usr/lib/x86_64-linux-gnu/:/usr/lib/../lib/:/usr/lib/gcc/x86_64-linux-gnu/13/../../../:/lib/:/usr/lib/]
         ignore line: [Reading specs from /usr/lib/gcc/x86_64-linux-gnu/13/libgomp.spec]
-        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_97709' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_97709.']
-        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccmmgis8.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_97709 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadbegin.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadend.o]
+        ignore line: [COLLECT_GCC_OPTIONS='-fopenmp' '-v' '-o' 'cmTC_60c37' '-v' '-shared-libgcc' '-mtune=generic' '-march=x86-64' '-pthread' '-dumpdir' 'cmTC_60c37.']
+        link line: [ /usr/libexec/gcc/x86_64-linux-gnu/13/collect2 -plugin /usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so -plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper -plugin-opt=-fresolution=/tmp/ccxiu3Jl.res -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc -plugin-opt=-pass-through=-lpthread -plugin-opt=-pass-through=-lc -plugin-opt=-pass-through=-lgcc_s -plugin-opt=-pass-through=-lgcc --build-id --eh-frame-hdr -m elf_x86_64 --hash-style=gnu --as-needed -dynamic-linker /lib64/ld-linux-x86-64.so.2 -pie -z now -z relro -o cmTC_60c37 /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/Scrt1.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crti.o /usr/lib/gcc/x86_64-linux-gnu/13/crtbeginS.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadbegin.o -L/usr/lib/gcc/x86_64-linux-gnu/13 -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu -L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib -L/lib/x86_64-linux-gnu -L/lib/../lib -L/usr/lib/x86_64-linux-gnu -L/usr/lib/../lib -L/usr/lib/gcc/x86_64-linux-gnu/13/../../.. CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o -lstdc++ -lm -lgomp -lgcc_s -lgcc -lpthread -lc -lgcc_s -lgcc /usr/lib/gcc/x86_64-linux-gnu/13/crtendS.o /usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu/crtn.o /usr/lib/gcc/x86_64-linux-gnu/13/crtoffloadend.o]
           arg [/usr/libexec/gcc/x86_64-linux-gnu/13/collect2] ==> ignore
           arg [-plugin] ==> ignore
           arg [/usr/libexec/gcc/x86_64-linux-gnu/13/liblto_plugin.so] ==> ignore
           arg [-plugin-opt=/usr/libexec/gcc/x86_64-linux-gnu/13/lto-wrapper] ==> ignore
-          arg [-plugin-opt=-fresolution=/tmp/ccmmgis8.res] ==> ignore
+          arg [-plugin-opt=-fresolution=/tmp/ccxiu3Jl.res] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc_s] ==> ignore
           arg [-plugin-opt=-pass-through=-lgcc] ==> ignore
           arg [-plugin-opt=-pass-through=-lpthread] ==> ignore
@@ -506,7 +490,7 @@ events:
           arg [-znow] ==> ignore
           arg [-zrelro] ==> ignore
           arg [-o] ==> ignore
-          arg [cmTC_97709] ==> ignore
+          arg [cmTC_60c37] ==> ignore
           arg [-L/usr/lib/gcc/x86_64-linux-gnu/13] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13]
           arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../x86_64-linux-gnu]
           arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../../../lib]
@@ -515,7 +499,7 @@ events:
           arg [-L/usr/lib/x86_64-linux-gnu] ==> dir [/usr/lib/x86_64-linux-gnu]
           arg [-L/usr/lib/../lib] ==> dir [/usr/lib/../lib]
           arg [-L/usr/lib/gcc/x86_64-linux-gnu/13/../../..] ==> dir [/usr/lib/gcc/x86_64-linux-gnu/13/../../..]
-          arg [CMakeFiles/cmTC_97709.dir/OpenMPTryFlag.cpp.o] ==> ignore
+          arg [CMakeFiles/cmTC_60c37.dir/OpenMPTryFlag.cpp.o] ==> ignore
           arg [-lstdc++] ==> lib [stdc++]
           arg [-lm] ==> lib [m]
           arg [-lgomp] ==> lib [gomp]
@@ -544,11 +528,11 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/FindOpenMP.cmake:420 (try_compile)"
       - "/usr/share/cmake-3.28/Modules/FindOpenMP.cmake:560 (_OPENMP_GET_SPEC_DATE)"
-      - "CMakeLists.txt:18 (find_package)"
+      - "CMakeLists.txt:30 (find_package)"
     description: "Detecting CXX OpenMP version"
     directories:
-      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-APsHyp"
-      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-APsHyp"
+      source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-BZdJlv"
+      binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-BZdJlv"
     cmakeVariables:
       CMAKE_CXX_FLAGS: ""
       CMAKE_CXX_FLAGS_DEBUG: "-g"
@@ -558,21 +542,17 @@ events:
       variable: "OpenMP_SPECTEST_CXX_"
       cached: true
       stdout: |
-        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-APsHyp'
+        Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-BZdJlv'
         
-        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_391eb/fast
-        gmake: Warning: File 'Makefile' has modification time 0.39 s in the future
-        /usr/bin/gmake  -f CMakeFiles/cmTC_391eb.dir/build.make CMakeFiles/cmTC_391eb.dir/build
-        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-APsHyp'
-        gmake[1]: Warning: File 'CMakeFiles/cmTC_391eb.dir/flags.make' has modification time 0.36 s in the future
-        Building CXX object CMakeFiles/cmTC_391eb.dir/OpenMPCheckVersion.cpp.o
-        /usr/bin/c++   -fopenmp -std=c++17 -o CMakeFiles/cmTC_391eb.dir/OpenMPCheckVersion.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-APsHyp/OpenMPCheckVersion.cpp
-        Linking CXX executable cmTC_391eb
-        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_391eb.dir/link.txt --verbose=1
-        /usr/bin/c++  -fopenmp CMakeFiles/cmTC_391eb.dir/OpenMPCheckVersion.cpp.o -o cmTC_391eb 
-        gmake[1]: warning:  Clock skew detected.  Your build may be incomplete.
-        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-APsHyp'
-        gmake: warning:  Clock skew detected.  Your build may be incomplete.
+        Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile cmTC_e621b/fast
+        /usr/bin/gmake  -f CMakeFiles/cmTC_e621b.dir/build.make CMakeFiles/cmTC_e621b.dir/build
+        gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-BZdJlv'
+        Building CXX object CMakeFiles/cmTC_e621b.dir/OpenMPCheckVersion.cpp.o
+        /usr/bin/c++   -fopenmp -std=c++17 -o CMakeFiles/cmTC_e621b.dir/OpenMPCheckVersion.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-BZdJlv/OpenMPCheckVersion.cpp
+        Linking CXX executable cmTC_e621b
+        /usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_e621b.dir/link.txt --verbose=1
+        /usr/bin/c++  -fopenmp CMakeFiles/cmTC_e621b.dir/OpenMPCheckVersion.cpp.o -o cmTC_e621b 
+        gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/CMakeScratch/TryCompile-BZdJlv'
         
       exitCode: 0
   -
@@ -580,7 +560,7 @@ events:
     backtrace:
       - "/usr/share/cmake-3.28/Modules/CheckIPOSupported.cmake:138 (try_compile)"
       - "/usr/share/cmake-3.28/Modules/CheckIPOSupported.cmake:266 (_ipo_run_language_check)"
-      - "CMakeLists.txt:73 (check_ipo_supported)"
+      - "CMakeLists.txt:66 (check_ipo_supported)"
     directories:
       source: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src"
       binary: "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin"
@@ -591,24 +571,19 @@ events:
         Change Dir: '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
         
         Run Build Command(s): /usr/bin/cmake -E env VERBOSE=1 /usr/bin/gmake -f Makefile
-        gmake: Warning: File 'Makefile' has modification time 0.3 s in the future
         /usr/bin/cmake -S/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src -B/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin --check-build-system CMakeFiles/Makefile.cmake 0
         /usr/bin/cmake -E cmake_progress_start /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin//CMakeFiles/progress.marks
         /usr/bin/gmake  -f CMakeFiles/Makefile2 all
         gmake[1]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
-        gmake[1]: Warning: File 'CMakeFiles/Makefile2' has modification time 0.32 s in the future
         /usr/bin/gmake  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/depend
         gmake[2]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
-        gmake[2]: Warning: File 'CMakeFiles/foo.dir/flags.make' has modification time 0.17 s in the future
         cd /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir/DependInfo.cmake
         Dependee "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir/DependInfo.cmake" is newer than depender "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir/depend.internal".
         Dependee "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/CMakeDirectoryInformation.cmake" is newer than depender "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/foo.dir/depend.internal".
         Scanning dependencies of target foo
-        gmake[2]: warning:  Clock skew detected.  Your build may be incomplete.
         gmake[2]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
         /usr/bin/gmake  -f CMakeFiles/foo.dir/build.make CMakeFiles/foo.dir/build
         gmake[2]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
-        gmake[2]: Warning: File 'CMakeFiles/foo.dir/flags.make' has modification time 0.099 s in the future
         [ 25%] Building CXX object CMakeFiles/foo.dir/foo.cpp.o
         /usr/bin/c++   -flto=auto -fno-fat-lto-objects -o CMakeFiles/foo.dir/foo.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src/foo.cpp
         [ 50%] Linking CXX static library libfoo.a
@@ -616,33 +591,26 @@ events:
         /usr/bin/cmake -E cmake_link_script CMakeFiles/foo.dir/link.txt --verbose=1
         "/usr/bin/gcc-ar-13" cr libfoo.a CMakeFiles/foo.dir/foo.cpp.o
         "/usr/bin/gcc-ranlib-13" libfoo.a
-        gmake[2]: warning:  Clock skew detected.  Your build may be incomplete.
         gmake[2]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
         [ 50%] Built target foo
         /usr/bin/gmake  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/depend
         gmake[2]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
-        gmake[2]: Warning: File 'CMakeFiles/boo.dir/progress.make' has modification time 0.03 s in the future
         cd /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin && /usr/bin/cmake -E cmake_depends "Unix Makefiles" /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir/DependInfo.cmake
         Dependee "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir/DependInfo.cmake" is newer than depender "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir/depend.internal".
         Dependee "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/CMakeDirectoryInformation.cmake" is newer than depender "/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles/boo.dir/depend.internal".
         Scanning dependencies of target boo
-        gmake[2]: warning:  Clock skew detected.  Your build may be incomplete.
         gmake[2]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
         /usr/bin/gmake  -f CMakeFiles/boo.dir/build.make CMakeFiles/boo.dir/build
         gmake[2]: Entering directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
-        gmake[2]: Warning: File 'CMakeFiles/boo.dir/depend.make' has modification time 0.34 s in the future
         [ 75%] Building CXX object CMakeFiles/boo.dir/main.cpp.o
         /usr/bin/c++   -flto=auto -fno-fat-lto-objects -o CMakeFiles/boo.dir/main.cpp.o -c /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/src/main.cpp
         [100%] Linking CXX executable boo
         /usr/bin/cmake -E cmake_link_script CMakeFiles/boo.dir/link.txt --verbose=1
         /usr/bin/c++ -flto=auto -fno-fat-lto-objects CMakeFiles/boo.dir/main.cpp.o -o boo  libfoo.a 
-        gmake[2]: warning:  Clock skew detected.  Your build may be incomplete.
         gmake[2]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
         [100%] Built target boo
-        gmake[1]: warning:  Clock skew detected.  Your build may be incomplete.
         gmake[1]: Leaving directory '/mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin'
         /usr/bin/cmake -E cmake_progress_start /mnt/d/Code/MCM_2026/cpp_kernel/build/CMakeFiles/_CMakeLTOTest-CXX/bin/CMakeFiles 0
-        gmake: warning:  Clock skew detected.  Your build may be incomplete.
         
       exitCode: 0
 ...

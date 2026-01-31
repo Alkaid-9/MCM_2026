@@ -1,25 +1,22 @@
 """
-MCM 2026 Problem C: Strategic Configuration Manager
-Role: Singleton Provider for Global Governance Metadata
-Standard: Industrial HPC / Academic Rigor
+MCM 2026 Problem C: Strategic Configuration Manager (Industrial Refactor)
+Role: Singleton Provider for Global Metadata & Governance Rules.
+Function: Centralized access to YAML/JSON configs with path resilience.
+Standard: Academic Rigor / Production-Grade Robustness.
 """
 
 import yaml
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, List
 
-
 class ConfigLoader:
     """
-    单例配置加载器，负责管理 rules.yaml, judges_mapping.json 和 priors.yaml。
-    设计要点：
-    1. 路径自动回溯：确保从任何子目录运行脚本都能定位到 /conf 目录。
-    2. 缓存一致性：单例模式避免在 23 核并行采样时重复读取磁盘。
-    3. 业务抽象：提供高级 API 屏蔽底层字典嵌套。
+    配置加载器（单例模式）：
+    确保全系统（包括 23 核并行采样器）共享同一套参数，并提供防御性的访问接口。
     """
-
     _instance = None
     _config: Dict[str, Any] = {}
     _judges: Dict[str, Any] = {}
@@ -32,117 +29,116 @@ class ConfigLoader:
         return cls._instance
 
     def _initialize(self):
-        """初始化加载所有配置文件"""
+        """初始化加载所有配置文件，建立项目根目录的绝对坐标。"""
+        # 路径自愈逻辑：无论从 main.py 运行还是从子目录运行，都能定位到 /conf
         self.project_root = Path(__file__).resolve().parent.parent.parent
         self.conf_dir = self.project_root / "conf"
 
-        # 加载核心规则 (YAML)
-        self._config = self._load_yaml(self.conf_dir / "rules.yaml")
-        # 加载评委映射 (JSON)
-        self._judges = self._load_json(self.conf_dir / "judges_mapping.json")
-        # 加载先验参数 (YAML)
-        self._priors = self._load_yaml(self.conf_dir / "priors.yaml")
+        try:
+            # 1. 加载核心业务规则 (rules.yaml)
+            self._config = self._load_yaml(self.conf_dir / "rules.yaml")
 
-        logging.info(f"[Config] Global configuration synchronized from {self.conf_dir}")
+            # 2. 加载评委先验映射 (judges_mapping.json)
+            self._judges = self._load_json(self.conf_dir / "judges_mapping.json")
+
+            # 3. 加载贝叶斯先验参数 (priors.yaml)
+            self._priors = self._load_yaml(self.conf_dir / "priors.yaml")
+
+            logging.info(f"[Config] 配置文件同步成功。根目录: {self.project_root}")
+
+            # [关键] 强制校验 etl 块是否存在
+            if 'etl' not in self._config:
+                logging.warning("⚠️ 'rules.yaml' 中缺失 'etl' 配置块，将使用硬编码默认值。")
+                self._config['etl'] = {
+                    'regex': r"week(\d+)_judge(\d+)_score",
+                    'score_range': [1, 10]
+                }
+
+        except Exception as e:
+            logging.critical(f"配置加载失败: {str(e)}")
+            sys.exit(1)
 
     def _load_yaml(self, path: Path) -> Dict:
         if not path.exists():
-            raise FileNotFoundError(f"Missing config: {path}")
+            raise FileNotFoundError(f"Missing mandatory YAML config: {path}")
         with open(path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
+            return yaml.safe_load(f) or {}
 
     def _load_json(self, path: Path) -> Dict:
         if not path.exists():
-            raise FileNotFoundError(f"Missing mapping: {path}")
+            raise FileNotFoundError(f"Missing mandatory JSON mapping: {path}")
         with open(path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+            return json.load(f) or {}
 
-    # --- 通用路径 API ---
+    # =========================================================================
+    # 通用访问接口 (Defensive API)
+    # =========================================================================
+
     def get_path(self, key: str) -> str:
-        """获取并格式化绝对路径"""
+        """获取路径并转换为系统绝对路径。"""
         rel_path = self._config.get('paths', {}).get(key)
         if not rel_path:
             raise KeyError(f"Path key '{key}' not defined in rules.yaml")
         return str(self.project_root / rel_path)
 
-    # --- 赛制逻辑 API ---
     def get_mechanism(self, season: int) -> str:
-        """核心：判断指定赛季采用的是 RANK 还是 PERCENT 机制"""
-        m = self._config['mechanisms']
-        if season in m['rank_based_seasons']:
+        """根据赛季判定当前执行的赛制。"""
+        m = self._config.get('mechanisms', {})
+        if season in m.get('rank_based_seasons', []):
             return "RANK"
-        if season in m['percent_based_seasons']:
-            return "PERCENT"
-        return "UNKNOWN"
+        return "PERCENT"
 
-    def is_judge_save_active(self, season: int) -> bool:
-        """判断该赛季是否引入了评委救人机制 (S28+)"""
-        cfg = self._config['mechanisms']['judge_save']
-        return season >= cfg['active_from']
+    def get_inference_params(self) -> Dict[str, Any]:
+        """获取 MCMC 采样器的超参数。"""
+        return self._config.get('inference', {})
 
-    # --- 评委逻辑 API (深度抽象) ---
+    def get_priors_config(self) -> Dict[str, Any]:
+        """获取贝叶斯先验分布定义。"""
+        return self._priors
+
+    def get_etl_config(self) -> Dict[str, Any]:
+        """专门获取 ETL 解析规则，防止之前出现的 KeyError。"""
+        return self._config.get('etl', {})
+
+    # =========================================================================
+    # 评委寻址高级逻辑 (用于 bindings.cpp 和 transformers.py)
+    # =========================================================================
     def get_judge_id(self, season: int, week: int, slot_idx: int) -> str:
         """
-        核心分级寻址逻辑：
-        1. 检查 weekly_anomalies (周度异常换人)
-        2. 检查 seasonal_configurations.overrides (赛季覆盖)
-        3. 回退到 seasonal_configurations.defaults (默认规则)
+        实现多级回退的评委身份识别：
+        1. 检查周度异常 (Weekly Anomalies)
+        2. 检查赛季覆盖 (Seasonal Overrides)
+        3. 回退到默认规则 (Defaults)
         """
-        # A. 检查周度异常 (如 s19w04)
+        # A. 检查周度异常 (如 S19W04 临时换人)
         anomaly_key = f"s{season}w{week:02d}"
-        if anomaly_key in self._judges.get('weekly_anomalies', {}):
-            slots = self._judges['weekly_anomalies'][anomaly_key].get('judge_slots', {})
-            slot_key = f"slot{slot_idx + 1}"
-            if slot_key in slots:
-                return slots[slot_key]
+        anomalies = self._judges.get('weekly_anomalies', {}).get(anomaly_key, {})
+        if anomalies:
+            judge_id = anomalies.get('judge_slots', {}).get(f"slot{slot_idx+1}")
+            if judge_id: return judge_id
 
-        # B. 检查赛季覆盖或默认
-        conf = self._judges['seasonal_configurations']
-        overrides = conf.get('overrides', {})
-        defaults = conf.get('defaults', {})
-
+        # B. 检查赛季覆盖
         season_key = f"season_{season}"
+        overrides = self._judges.get('seasonal_configurations', {}).get('overrides', {})
         if season_key in overrides:
             return overrides[season_key][slot_idx]
 
-        # 范围回退逻辑 (例如 S01_S18)
+        # C. 范围回退 (如 S01_S18 的通用席位)
+        defaults = self._judges.get('seasonal_configurations', {}).get('defaults', {})
         for range_key, judge_list in defaults.items():
-            start_s, end_s = map(int, range_key.replace('S', '').split('_'))
-            if start_s <= season <= end_s:
-                return judge_list[slot_idx]
+            try:
+                start_s, end_s = map(int, range_key.replace('S', '').split('_'))
+                if start_s <= season <= end_s:
+                    return judge_list[slot_idx]
+            except (ValueError, IndexError):
+                continue
 
         return "UNKNOWN"
 
-    def get_judge_prior(self, judge_code: str) -> Dict[str, float]:
-        """获取评委的贝叶斯先验 (mu, sigma)"""
-        return self._judges['judge_registry'].get(judge_code, self._judges['judge_registry']['UNKNOWN'])[
-            'bayesian_prior']
-
-    # --- 先验与采样控制 API ---
-    def get_inference_params(self) -> Dict:
-        """获取 MCMC 采样超参数"""
-        return self._config['inference']
-
-    def get_priors_config(self) -> Dict:
-        """获取先验分布定义"""
-        return self._priors
-
-
-# --- 单元测试 ---
 if __name__ == "__main__":
+    # 单元测试：验证单例模式与路径解析
     logging.basicConfig(level=logging.INFO)
-    loader = ConfigLoader()
-
-    # 测试路径解析
-    print(f"Bronze Data Path: {loader.get_path('bronze_raw')}")
-
-    # 测试赛制判定
-    print(f"Season 27 Mechanism: {loader.get_mechanism(27)}")  # 应为 PERCENT
-    print(f"Season 28 Mechanism: {loader.get_mechanism(28)}")  # 应为 RANK
-
-    # 测试评委寻址逻辑
-    print(f"S19 W01 Slot 3: {loader.get_judge_id(19, 1, 2)}")  # 正常 JH
-    print(f"S19 W04 Slot 4: {loader.get_judge_id(19, 4, 3)}")  # 异常 GUEST
-
-    # 测试先验获取
-    print(f"Len Goodman (LG) Prior: {loader.get_judge_prior('LG')}")
+    loader1 = ConfigLoader()
+    loader2 = ConfigLoader()
+    print(f"Singleton test: {id(loader1) == id(loader2)}")
+    print(f"ETL Regex: {loader1.get_etl_config().get('regex')}")

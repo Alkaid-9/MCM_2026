@@ -744,23 +744,8 @@ CMakeFiles/mcm_core_lib.dir/src/bindings.cpp.o: \
  /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
- /mnt/d/Code/MCM_2026/cpp_kernel/include/math_utils.hpp \
- /usr/include/eigen3/unsupported/Eigen/SpecialFunctions \
- /usr/include/eigen3/Eigen/Core \
- /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsImpl.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsBFloat16.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsHalf.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsPacketMath.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsFunctors.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/BesselFunctionsArrayAPI.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsImpl.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsBFloat16.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsHalf.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsPacketMath.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsFunctors.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/SpecialFunctionsArrayAPI.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/BesselFunctions.h \
- /usr/include/eigen3/unsupported/Eigen/src/SpecialFunctions/arch/AVX/SpecialFunctions.h \
- /usr/include/eigen3/Eigen/src/Core/util/ReenableStupidWarnings.h \
+ /mnt/d/Code/MCM_2026/cpp_kernel/include/likelihood.hpp \
+ /mnt/d/Code/MCM_2026/cpp_kernel/include/types.hpp \
+ /mnt/d/Code/MCM_2026/cpp_kernel/include/diagnostics.hpp \
+ /mnt/d/Code/MCM_2026/cpp_kernel/include/types.hpp \
  /mnt/d/Code/MCM_2026/cpp_kernel/include/diagnostics.hpp

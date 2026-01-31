@@ -1,21 +1,20 @@
 # ==============================================================================
-# MCM 2026 Problem C: "The Invisible Hand"
-# Governance Configuration for Bayesian Latent Variable Inference
-# Architecture: Python (Logic) + C++/Numba (High-Performance Kernel)
-# Target: O-Prize / INFORMS Journal Standard / 23-Core Parallelization
+# MCM 2026 Problem C: "The Invisible Hand" - Global Governance Config
+# Role: Strategic Metadata & Parameter Orchestration
+# Standard: O-Prize / INFORMS Journal / High-Performance Computing
 # ==============================================================================
 
 project:
   name: "DWTS_Latent_Inference_Project"
-  version: "3.1.0-Platinum-O-Prize"
+  version: "4.1.0-Platinum-Refactored"
   random_seed: 2026  # 固化随机种子，确保大规模仿真可复现 (Reproducibility)
-  description: "Reconstructing latent fan preference from ordinal judges scoring via Bayesian Inverse Optimization."
+  description: "Reconstructing latent fan preference via Bayesian Inverse Optimization."
 
 # ------------------------------------------------------------------------------
 # 1. 路径管理 (Industrial Data Lake Architecture)
 # ------------------------------------------------------------------------------
 paths:
-  # 分层数据流 (Data Lake Layers)
+  # 分层数据流 (Data Lake Layers: Bronze -> Silver -> Gold -> Platinum)
   bronze_raw: "data/bronze/2026_MCM_Problem_C_Data.csv"
   silver_panel: "data/silver/cleaned_long_format.csv"
   gold_factors: "data/gold/factor_library.csv"
@@ -23,7 +22,7 @@ paths:
 
   # 系统输出
   figures_dir: "reports/figures/"
-  logs: "logs/system_audit.log"          # 关键：供 validators.py 调用记录审计报告
+  logs: "logs/system_audit.log"
   mcmc_logs_dir: "logs/mcmc_chains/"
 
 # ------------------------------------------------------------------------------
@@ -45,44 +44,60 @@ mechanisms:
   # 学术价值：这是 MCMC 的强约束 (Hard Constraint) —— Bottom Two 的总分必须是全场最低
   judge_save:
     active_from: 28
-    candidate_pool_size: 2  # 倒数两名进入‘评委救济’逻辑
+    candidate_pool_size: 2
     veto_logic: "Professional_Override"
 
 # ------------------------------------------------------------------------------
-# 3. 贝叶斯推理超参数 (Task 1: Bayesian Inference Engine)
+# 3. ETL 基础配置 (Stage 1 Parsing Logic) - [REFACTORED: 修复 KeyError]
+# ------------------------------------------------------------------------------
+etl:
+  # 物理意义：解析宽表列名的“正则表达式手术刀”
+  # 匹配示例: "week1_judge2_score" -> Group 1: 1 (Week), Group 2: 2 (Judge Slot)
+  # 使用双反斜杠转义以兼容 Python 字符串解析
+  regex: "week(\\d+)_judge(\\d+)_score"
+
+  # 物理约束：评委打分的合法区间 (用于 DataValidator 审计)
+  score_range: [1.0, 10.0]
+
+  # 鲁棒性标准化参数 (Robust Z-Score Scaling Factor)
+  # 1.3489 是将 IQR 映射为标准差的理论常数 (Gaussian Assumption)
+  robust_scaling_factor: 1.3489
+
+# ------------------------------------------------------------------------------
+# 4. 贝叶斯推理超参数 (Task 1: Bayesian Inference Engine)
 # ------------------------------------------------------------------------------
 inference:
   # MCMC 采样策略 (对齐 23 核 CPU 并行)
   mcmc_strategy:
-    n_chains: 23             # 严格对齐硬件核心数，每核处理一个独立链
-    samples_per_chain: 1000000 # 提升采样深度以解决 R-hat > 1.1 的不收敛问题
-    burn_in_ratio: 0.2       # 丢弃前 20% 的预热样本
-    thinning: 10             # 增加稀疏步长，进一步降低马尔可夫链的自相关性
-    jump_size: 0.02          # 降低步长，使采样在单纯形高概率区游走更平稳
+    n_chains: 23
+    samples_per_chain: 100000
+    burn_in_ratio: 0.2
+    thinning: 10
+    jump_size: 0.05          # 初始步长 epsilon
 
   # 约束与惩罚刚度 (Likelihood Hyperparameters)
   # 物理意义：决定了违反历史事实的代价有多大 (Lambda)
+  # [重构建议]: 这里的 penalty 使用平滑的二次项 (L2 Hinge Loss)
   constraints:
+    rank_tau: 0.05                     # Soft-Rank 温度，越小越接近硬排名
     rank_violation_penalty: 150.0      # 违反排名顺序的惩罚
-    bottom_two_penalty_weight: 1500.0  # [补丁] 违反 "Bottom Two" 事实的惩罚 (硬约束)
+    bottom_two_penalty_weight: 1500.0  # 违反 "Bottom Two" 事实的惩罚 (硬约束)
     score_margin_penalty: 500.0        # 分数差距惩罚 (Percent 模式专用)
-    entropy_regularization: 0.08       # 增加最大熵正则，倾向于更均匀的选民分布（奥卡姆剃刀）
+    entropy_regularization: 0.08       # 增加最大熵正则，防止过拟合于极端得票率
 
   # 先验强度 (Bayesian Priors)
   priors:
-    zipf_alpha_standard: 1.2  # 社交网络幂律指数 (标准值)
-    zipf_alpha_allstar: 0.8   # 全明星赛季头部效应较弱，分布更扁平
-    prior_strength: 0.15      # 略微提升先验权重，增强系统稳定性
+    zipf_alpha_standard: 1.2
+    zipf_alpha_allstar: 0.8
+    prior_strength: 0.15
 
 # ------------------------------------------------------------------------------
-# 4. ETL 特征工程参数 (Feature Engineering)
+# 5. 特征工程参数 (Feature Engineering)
 # ------------------------------------------------------------------------------
 features:
-  # 滚动窗口配置 (防止前瞻偏差)
   rolling_window:
-    min_periods: 1  # 至少需要 1 个历史赛季才能计算 Partner Alpha
+    min_periods: 1
 
-  # 语义映射：将离散标签归类为社会学特征
   industry_mapping:
     "NFL Player": "Athlete_Professional"
     "NBA Player": "Athlete_Professional"
@@ -98,20 +113,19 @@ features:
     "Politician": "Controversial_Public_Figure"
     "Other": "Baseline"
 
-  # 年龄分段策略 (用于 Task 3 归因分析)
   age_segmentation:
     bins: [0, 25, 40, 60, 100]
     labels: ["GenZ", "Millennial", "GenX", "Senior"]
 
 # ------------------------------------------------------------------------------
-# 5. 机制设计参数 (Task 4: Mechanism Design)
+# 6. 机制设计参数 (Task 4: Mechanism Design)
 # ------------------------------------------------------------------------------
 task4_mechanism_design:
   # 动态权重函数 w(t) = Sigmoid(k * (t - t0))
   # 物理意义：赛季初期重人气（Engagement），后期重技术（Meritocracy）
   dynamic_weighting:
-    sigmoid_k: 0.5    # 变化斜率
-    sigmoid_t0: 0.6   # 拐点位置 (赛程的 60% 处)
+    sigmoid_k: 0.5
+    sigmoid_t0: 0.6
 
   # 熔断机制阈值
   circuit_breaker:
