@@ -1,6 +1,6 @@
 /**
  * @file math_utils.cpp
- * @brief High-Performance Numerical Kernels Implementation (Industrial Refactor)
+ * @brief High-Performance Numerical Kernels Implementation (Industrial Refactor v4.5)
  * @author MCM 2026 Problem C - "The Invisible Hand" Team
  *
  * [架构说明 - Architecture]:
@@ -88,7 +88,8 @@ namespace math {
 
         // term2 = sum(ln Gamma(alpha_i))
         // 使用 Eigen 的 digest/lgamma 实现向量化计算
-        Real term2 = alpha.unaryExpr([](Real x) { return std::lgamma(x); }).sum();
+        // 注意：unsupported 模块中的 lgamma 可能需要 array() 调用
+        Real term2 = alpha.array().lgamma().sum();
 
         // 2. 计算核心项 (Kernel)
         // term3 = sum( (alpha_i - 1) * ln(v_i) )
@@ -136,7 +137,6 @@ namespace math {
         // log( sum exp(vi) ) = log( exp(max) * sum exp(vi - max) )
         //                    = max + log( sum exp(vi - max) )
         Real sum_exp = (v.array() - max_val).exp().sum();
-
         return max_val + std::log(sum_exp);
     }
 
@@ -153,7 +153,6 @@ namespace math {
 
         // 分子: exp(x_i - max)
         VoteDistribution exp_x = (x.array() - max_val).exp();
-
         Real sum = exp_x.sum();
 
         // [防御] 极罕见情况防御 (如所有 x 都是 -inf)

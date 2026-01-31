@@ -1,18 +1,12 @@
 /**
  * @file likelihood.cpp
- * @brief Core Likelihood Engine for Bayesian Inverse Optimization (Industrial Refactor)
+ * @brief Core Bayesian Energy Engine Implementation (Industrial Refactor v4.5)
  * @author MCM 2026 Problem C - "The Invisible Hand" Team
  *
  * [物理意义 - Physics Interpretation]:
- * 本模块负责构建参数空间中的“能量景观” (Energy Landscape)。
- * P(v | Outcome) \propto exp(-E(v))
- *
- * 能量 E(v) 由三部分势能叠加而成：
- * 1. E_elim (淘汰势能): 历史事实形成的深井。被淘汰者的生存分必须处于低位。
- *    - 对于 Rank 制：使用 Soft-Rank 算子实现可导的排序约束。
- *    - 对于 Save 机制：放宽势能井，允许淘汰者处于倒数第二的位置。
- * 2. E_jeopardy (危机势能): "Bottom Two" 信号形成的软约束，将相关选手推向低分。
- * 3. E_entropy (负熵势能): 热力学约束，防止模型过拟合，倾向于“平坦”的选票分布。
+ * 本模块负责构建高维参数空间中的“能量景观” (Energy Landscape)。
+ * 公式: ln P(V | Data) = ln P(Data | V) + ln P(V | Prior) + C
+ * 我们寻找满足淘汰硬约束 (Likelihood) 且最符合社会学先验 (Zipf Prior) 的后验分布。
  */
 
 #include "likelihood.hpp"
@@ -21,7 +15,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
-#include <iostream>
+#include <vector>
 
 namespace mcm {
 namespace engine {
@@ -29,167 +23,166 @@ namespace engine {
     using namespace mcm::types;
 
     // =========================================================================
-    // 核心接口: 计算总对数似然 ln P(Evidence | LatentVotes)
+    // 核心接口: 计算总对数后验概率密度 (Target of MCMC)
     // =========================================================================
-    Real LikelihoodEvaluator::compute_log_likelihood(
+    Real LikelihoodEvaluator::compute_log_posterior(
         ConstVecRef fan_votes_share,
         ConstVecRef judge_scores,
         int elim_idx,
         ConstIntVecRef jeopardy_mask,
+        ConstVecRef prior_mean,
         MechanismType mech_type
     ) const {
-        // --- 1. 物理合法性防御 (Stability Guard) ---
-        // 任何 NaN 或 Inf 都会导致能量场崩塌，必须立即拦截
+        // --- 1. 数值防御 (Stability Guard) ---
+        // 贝叶斯反演对无效数值零容忍，任何状态坍缩立即返回物理禁区
         if (!fan_votes_share.allFinite()) return constants::NEG_INF;
 
-        Real log_lik = 0.0;
-        long n = fan_votes_share.size();
+        Real total_log_prob = 0.0;
+        const long n = fan_votes_share.size();
 
-        // --- 2. 构建统一生存分数 (Survival Score Construction) ---
-        // 目标：将不同赛制下的表现统一为 "Higher is Better" 的连续标量
+        // --- 2. 计算贝叶斯先验势能 (The Zipfian Anchor) ---
+        // 物理意义：将解拉向基于明星知名度预测的长尾分布，防止解向最大熵（均匀分布）退化。
+        total_log_prob += compute_prior_log_density(fan_votes_share, prior_mean);
+
+        // 如果当前点在先验场中概率极低，提前熔断以节省算力
+        if (total_log_prob <= constants::NEG_INF) return constants::NEG_INF;
+
+        // --- 3. 构建生存分流形 (Survival Score Manifold) ---
+        // 目标：将不同赛制的规则统一映射为连续可导的标量场 "Higher is Better"
         VoteDistribution survival_score(n);
 
         if (mech_type == MechanismType::PERCENT_BASED) {
-            // [百分比制 S3-S27]
-            // 公式: Survival = Judge% + Fan%
-            // 评委分 judge_scores 已经预处理为占比形式 (Sum=1) 或需要在此处归一化
-            // 假设 ETL 层已传入归一化的 Z-Score 或占比，此处直接叠加
+            // [百分比制 S3-S27]: 线性强度叠加
+            // 评委信号与粉丝份额直接相加，此时 judge_scores 需预处理为同量纲
             survival_score = judge_scores + fan_votes_share;
         }
         else {
-            // [排名制 S1-S2, S28+]
-            // 公式: Total_Rank = Rank(Judge) + Rank(Fan)
-            // 原始逻辑: Rank 1 (Min) 是最好的。
-            // 转换逻辑: 取负号，转化为 Higher is Better。
+            // [排名制 S1-S2, S28+]: 序数信号叠加
+            // 原始逻辑: 总排名 = Rank(Judge) + Rank(Fan)，1 为最强。
+            // 物理映射: 取负号，将排名最小化转化为生存分最大化，并使用 Soft-Rank 保证可导性。
 
-            // A. 计算粉丝票的软排名 (Soft-Rank)
-            // 使用 Sigmoid 平滑近似，使梯度可传导
+            // A. 计算粉丝票的平滑排名 (tau 控制规则硬度)
             VoteDistribution fan_ranks = mcm::math::compute_soft_ranks(fan_votes_share, cfg_.rank_tau);
 
-            // B. 计算评委分的软排名
-            // 注意：judge_scores 通常是分数 (Higher is Better)，Soft-Rank 会自动处理为 "分数越高Rank越小"
+            // B. 计算评委分的平滑排名
             VoteDistribution judge_ranks = mcm::math::compute_soft_ranks(judge_scores, cfg_.rank_tau);
 
-            // C. 合成生存分 (负的总排名)
+            // C. 叠加并转化极性
             survival_score = -1.0 * (fan_ranks + judge_ranks);
         }
 
-        // --- 3. 计算淘汰势能 (The "Hard" Constraint) ---
-        // 解释：为什么这个人被淘汰了？因为他的生存分太低。
+        // --- 4. 计算观测数据似然 (The "Hard" Constraint Likelihood) ---
+        // 解释：如果推演出的票数违反了“淘汰者是表现最差”的事实，产生巨大的能量惩罚。
         if (elim_idx >= 0 && elim_idx < n) {
-            log_lik += compute_elimination_penalty(survival_score, elim_idx);
+            total_log_prob += compute_constraint_penalty(survival_score, elim_idx);
         }
 
-        // --- 4. 计算危险区势能 (The "Soft" Constraint) ---
-        // 解释：为什么这些人进了 Bottom Two？
-        log_lik += compute_jeopardy_penalty(survival_score, jeopardy_mask);
+        // --- 5. 计算信号引导势能 (The "Soft" Jeopardy Likelihood) ---
+        // 解释：处于 "Bottom Two" 信号中的选手，其生存分理论上应处于低位。
+        total_log_prob += compute_jeopardy_penalty(survival_score, jeopardy_mask);
 
-        // --- 5. 熵正则化 (Occam's Razor / Thermodynamic Prior) ---
-        // 物理意义: 在满足上述约束的前提下，我们倾向于相信粉丝投票是尽可能“混乱/随机”的，
-        // 而不是极端的 (比如一个人拿 99% 票)。这防止模型过拟合于某个特定的解。
-        if (cfg_.entropy_regularization > 0.0) {
-            Real entropy = mcm::math::compute_entropy(fan_votes_share);
-            log_lik += cfg_.entropy_regularization * entropy;
-        }
-
-        return log_lik;
+        return total_log_prob;
     }
 
     // =========================================================================
-    // 辅助逻辑: 淘汰约束惩罚 (Quadratic Hinge Loss)
+    // 组件 A: Dirichlet 先验密度评估 (The Prior)
     // =========================================================================
-    Real LikelihoodEvaluator::compute_elimination_penalty(
+    Real LikelihoodEvaluator::compute_prior_log_density(
+        ConstVecRef fan_votes,
+        ConstVecRef prior_mean
+    ) const {
+        // [贝叶斯超参数映射]
+        // 将 Zipf 预测值映射为 Dirichlet 分布的浓度参数 alpha。
+        // 公式: alpha_i = 1.0 + prior_strength * mean_i
+        // 物理直觉：
+        // 1. strength 代表我们对明星固有流量的信念强度。
+        // 2. "+1.0" 保证了分布的凸性 (alpha >= 1) 和计算稳定性。
+
+        VoteDistribution alpha = (prior_mean * cfg_.prior_strength).array() + 1.0;
+
+        // 调用 math_utils 中的向量化对数伽马算法
+        return mcm::math::log_dirichlet_pdf(fan_votes, alpha);
+    }
+
+    // =========================================================================
+    // 组件 B: 淘汰逻辑惩罚项 (The Likelihood)
+    // =========================================================================
+    Real LikelihoodEvaluator::compute_constraint_penalty(
         const VoteDistribution& score,
         int elim_idx
     ) const {
         Real penalty = 0.0;
-        Real loser_score = score[elim_idx];
-        long n = score.size();
+        const Real loser_score = score[elim_idx];
+        const long n = score.size();
 
-        // 设定安全边际，防止数值抖动导致约束失效
-        Real margin = 1e-4;
+        // 设置极小安全边际 (Safety Margin)，防止 MCMC 在边界处因导数消失而卡死
+        const Real margin = 1e-4;
 
         if (cfg_.enable_judge_save) {
-            // [S28+ 新政: Judges' Save Mechanism]
-            // 规则: 淘汰者只需处于 Bottom Two (倒数前两名)。
-            // 物理意义: 全场允许有 1 个人的分数比淘汰者更低 (即 Saved 的那个倒霉蛋)。
-            // 违规判定: 如果有 >= 2 个人比淘汰者还惨，说明淘汰者实际上排倒数第三或更好，这违背了物理事实。
+            // [S28+ 新政: Judges' Save 机制]
+            // 规则：只要淘汰者处于 Bottom Two 即可。
+            // 物理意义：全场只允许最多有一个选手的生存分比淘汰者更低（那个人被 Saved）。
 
-            int worse_than_loser_count = 0;
-            Real cumulative_violation = 0.0;
-
+            std::vector<Real> violations;
             for (int i = 0; i < n; ++i) {
                 if (i == elim_idx) continue;
 
-                // 如果 score[i] < loser_score，说明 i 比淘汰者更该死
-                Real diff = loser_score - score[i]; // 正数代表违规程度
+                // 计算差值：如果存活者分数 < 淘汰者分数，视为潜在违规点
+                Real diff = loser_score - score[i];
                 if (diff > margin) {
-                    worse_than_loser_count++;
-                    // 累积违规幅度 (Hinge Loss)
-                    cumulative_violation += diff * diff;
+                    violations.push_back(diff);
                 }
             }
 
-            // 只有当比淘汰者差的人数超过 1 人时，才施加惩罚
-            if (worse_than_loser_count >= 2) {
-                // 惩罚力度 = 基础刚度 * (违规人数超额部分) * 违规幅度
-                Real count_factor = static_cast<Real>(worse_than_loser_count - 1);
-                penalty -= cfg_.elim_penalty * count_factor * cumulative_violation;
+            // [Top-K 惩罚逻辑]: 如果发现 >= 2 个人比淘汰者还差，说明 elim_idx 不是倒数前二。
+            if (violations.size() >= 2) {
+                // 对所有违规进行排序，选取最轻微的违规作为优化方向（Relaxed Barrier）
+                std::sort(violations.begin(), violations.end());
+                Real threshold_violation = violations[0];
+                // 使用二次 Hinge Loss，保证势能景观平滑
+                penalty -= cfg_.elim_penalty * (threshold_violation * threshold_violation);
             }
-
-        } else {
+        }
+        else {
             // [传统规则: Lowest Score Leaves]
-            // 规则: 淘汰者必须是全场最低分 (Bottom One)。
-            // 翻译: 任何存活者 (i != elim) 的分数都必须 > 淘汰者。
-
+            // 规则：淘汰者必须是全场表现绝对最差者 (Bottom One)。
             for (int i = 0; i < n; ++i) {
                 if (i == elim_idx) continue;
 
-                // 违规情况: 存活者分数 (score[i]) <= 淘汰者分数 (loser_score)
-                // 物理: 存活者本该死，但他活着 -> 模型推断错误 -> 罚！
+                // 如果存活者表现差于淘汰者，直接施加惩罚
                 Real diff = loser_score - score[i];
-
-                if (diff > -margin) { // 使用 -margin 允许极其微小的误差
-                    // 使用平滑的二次惩罚函数 (L2 Loss)
-                    // 这种平滑性对 MCMC 的 HMC/NUTS 变种极其重要
+                if (diff > -margin) {
                     Real violation = diff + margin;
                     penalty -= cfg_.elim_penalty * (violation * violation);
                 }
             }
         }
-
         return penalty;
     }
 
     // =========================================================================
-    // 辅助逻辑: 危险区约束惩罚 (Jeopardy Potential)
+    // 组件 C: 危机信号评估 (The Contextual Hint)
     // =========================================================================
     Real LikelihoodEvaluator::compute_jeopardy_penalty(
         const VoteDistribution& score,
         ConstIntVecRef mask
     ) const {
         Real penalty = 0.0;
-
-        // 1. 计算全场统计量作为“参考水位”
-        Real mean_score = score.mean();
+        // 以周均分为“统计平衡点”
+        const Real baseline = score.mean();
 
         for (int i = 0; i < score.size(); ++i) {
-            // 如果 mask[i] == 1，说明此人在危险区 (Bottom Two/Three)
+            // mask[i] == 1 表示当周宣布时，该选手身处危险区
             if (mask[i] == 1) {
-                // 理论上他的分应该很低，至少低于均值。
-                // 违规情况: 他的分很高 (> mean)，却进了危险区。这不科学。
-                Real gap = score[i] - mean_score;
-
-                if (gap > 0) {
-                    // 这是一个“软约束”，惩罚力度 (jeopardy_penalty) 通常小于淘汰惩罚
-                    // 同样使用平方惩罚以保证导数连续
-                    penalty -= cfg_.jeopardy_penalty * (gap * gap);
+                // 物理直觉：身处危险区的人，推演分应低于均值。
+                // 违规：身处危险区却拿到了高分，说明投票估计偏离了当周气氛。
+                Real violation = score[i] - baseline;
+                if (violation > 0) {
+                    // 施加较轻的软约束惩罚
+                    penalty -= cfg_.jeopardy_penalty * (violation * violation);
                 }
             }
-            // 可选扩展: 如果 mask[i] == 0 (Safe)，我们可以稍微惩罚他分数过低的情况
-            // 但为了保持模型简洁性(Occam's Razor)，且避免与淘汰约束冲突，暂不加入。
         }
-
         return penalty;
     }
 

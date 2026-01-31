@@ -1,84 +1,91 @@
 # ==============================================================================
-# MCM 2026 Problem C: Bayesian Prior Definitions & Sampling Hyperparameters
+# MCM 2026 Problem C: Statistical Shape & Prior Definitions
 # Role: Defining the "Mental Model" of Fan Behavior (The Superstar Effect)
-# Standard: Industrial Bayesian Inference / Peer-Reviewed Research Ready
+# Function: Providing distributional hyperparameters for the Bayesian Prior Engine.
+# Version: 4.5.0-Bayesian-Final
 # ==============================================================================
 
 metadata:
   framework: "Bayesian Inverse Optimization (BIO)"
-  author: "Quantitative Inference Engine v4.1"
-  description: "Priors for Latent Fan Vote Shares based on Preferential Attachment"
+  author: "Quantitative Inference Engine v4.5"
+  description: "Hyperparameters for Zipfian and Dirichlet Manifolds."
 
 # ------------------------------------------------------------------------------
-# 1. Latent Distribution Models (潜变量分布模型)
-# 物理意义：模拟社交媒体的马太效应，即“流量向头部倾斜”的分布特征。
+# 1. 核心分布形态 (Latent Distribution Models)
+# 物理意义：模拟社交媒体的马太效应 (Matthew Effect)，即“流量向头部倾斜”。
 # ------------------------------------------------------------------------------
 vote_distribution:
-  primary_model: "Zipf_Power_Law"  # 模拟顶流现象
-  fallback_model: "Log_Normal"     # 模拟常规热度分布
+  primary_model: "Zipf_Power_Law"  # 主模型：幂律分布
 
+  # [Zipf's Law] P(r) ~ 1 / r^alpha
   zipf_params:
-    alpha: 1.2                     # 标准幂律指数：决定了贫富差距的斜率
-    min_vote_share: 0.005          # 兜底得票率：防止长尾端出现数学奇异值
+    # 标准衰减指数：1.2 是典型的社交网络关注度分布参数
+    # Sensitivity Check: 尝试 [0.8, 1.5]
+    alpha_standard: 1.2
 
+    # 全明星赛季 (S15) 的修正：流量更扁平，贫富差距小
+    alpha_allstar: 0.8
+
+    # 截断保护：防止长尾端出现数学上的无穷小，导致 Log-Likelihood 爆炸
+    min_vote_share: 0.001  # 0.1% 的兜底票仓
+
+  # [备用模型] Log-Normal (用于 Task 7 的鲁棒性对比)
+  # 假设观众投票服从对数正态分布而非幂律分布，看结果是否显著变化
   log_normal_params:
     mu_base: 0.0
-    sigma_base: 0.6                # 决定了“黑马”突破先验屏障的概率
-    clip_threshold: [0.001, 0.9]
+    sigma_base: 0.6  # 波动率：决定了“黑马”突破先验屏障的概率
 
 # ------------------------------------------------------------------------------
-# 2. Season-Specific Priors (针对 Task 1 & 2 的专项配置)
-# [关键修复]: 补全了 inference 块，解决 priors.py 中的 KeyError
+# 2. Dirichlet 先验场参数 (The Bayesian Anchor)
+# 物理意义：控制先验分布在单纯形 (Simplex) 上的集中程度。
 # ------------------------------------------------------------------------------
-inference:
-  priors:
-    # 物理意义：全明星赛季(S15)选手实力极度接近，人气分布更趋向扁平化（Entropy更高）
-    alpha_allstar: 0.8             # 显著低于标准 1.2，代表竞争的白热化
+dirichlet_field:
+  # 基础浓度 (Concentration Base)
+  # alpha_vector = 1 + strength * prior_mean
+  # 这个参数必须与 rules.yaml 中的 inference.constraints.prior_strength 协同调整
+  # 建议保持默认，在 rules.yaml 中进行全局调控
+  concentration_scaling: "Linear"
 
 # ------------------------------------------------------------------------------
-# 3. Informative Prior Weights (启发式因子权重)
-# 逻辑：在观测数据进入前，我们对明星热度的初始“猜测”权重。
+# 3. 赛季特异性覆盖 (Season-Specific Overrides)
+# 学术价值：体现对特定历史背景的精细化建模
 # ------------------------------------------------------------------------------
-factor_anchors:
-  partner_alpha_weight: 0.45       # 舞伴的“带粉能力”权重
-  technical_momentum_weight: 0.25  # 选手的“成长剧本”权重
-  industry_base_bias:              # 行业初始流量池 (Prior Mean Shift)
-    "Sports": 0.05
-    "Music": 0.08
-    "Screen": 0.03
-    "Media": 0.12                  # 电视真人秀明星具有天然的民意优势
-    "Other": 0.0
+season_overrides:
+  # Season 15: All-Stars
+  15:
+    distribution_model: "Zipf_Power_Law"
+    alpha: 0.8  # 竞争白热化
+
+  # Season 27: The Bobby Bones Anomaly
+  # 即使我们知道他赢了，先验依然假设他是长尾分布。
+  # 这样 Posterior 与 Prior 的巨大差异（KL 散度）才能证明“他赢全靠死忠粉”。
+  27:
+    distribution_model: "Zipf_Power_Law"
+    alpha: 1.2  # 保持标准，让数据去“打脸”先验
 
 # ------------------------------------------------------------------------------
-# 4. Regularization & Penalty (似然函数正则项)
-# 物理意义：防止 MCMC 为了满足硬约束而产生不符合社会学逻辑的极端解。
+# 4. 灵敏度分析配置 (Task 7: Sensitivity Analysis)
+# 目标：生成论文 Robustness Check 章节的素材
 # ------------------------------------------------------------------------------
-regularization:
-  entropy_weight: 0.01             # 最大熵正则：倾向于平滑分布（奥卡姆剃刀）
-  l2_shrinkage: 0.05               # 抑制离群点选票
-  consistency_penalty: 0.15        # 时间相干性约束：选票不应在周际无故跳变
+sensitivity_analysis:
+  # 场景 A: 弱先验 (Weak Prior)
+  # 假设：观众完全随波逐流，没有固有偏好
+  scenario_weak:
+    prior_strength: 10.0
+    zipf_alpha: 0.5
+
+  # 场景 B: 强先验 (Strong Prior)
+  # 假设：观众也是“外貌协会”或“唯名气论”，无视舞蹈质量
+  scenario_strong:
+    prior_strength: 200.0
+    zipf_alpha: 1.5
 
 # ------------------------------------------------------------------------------
-# 5. Solver & Sampling Strategy (执行层参数)
-# 注意：n_chains 应在 rules.yaml 中与硬件核心数对齐，此处为单链默认配置。
+# 5. 异常检测阈值 (Anomaly Detection Thresholds)
 # ------------------------------------------------------------------------------
-optimization_control:
-  method: "SLSQP"
-  fallback: "COBYLA"
-  max_iter: 1500
-  tolerance: 1e-7
+thresholds:
+  # 熵值熔断线：如果 entropy > 0.95 * max_entropy，说明模型完全甚至不知道谁会赢
+  max_entropy_ratio: 0.95
 
-  sampling:
-    n_chains: 23                   # [同步更新]: 严格对齐你 23 核 CPU
-    n_samples: 100000              # 每条链的厚度
-    burn_in_pct: 0.2
-    thinning: 10                   # 稀疏采样：降低马尔可夫链自相关性
-    jump_size: 0.05                # 决定了采样器在能量景观上的勘探步长
-
-# ------------------------------------------------------------------------------
-# 6. Convergence Metrics (学术准入判据)
-# ------------------------------------------------------------------------------
-diagnostics:
-  r_hat_threshold: 1.1             # 顶刊级标准：R-hat < 1.1 视为全局收敛
-  ess_min: 1000                    # 有效样本当量底线
-  fidelity_score_min: 0.95         # 业务逻辑解释力底线
+  # 排名置信度阈值：如果 95% CI 的区间宽度超过 5 个排名身位，视为“不可知”
+  rank_uncertainty_span: 5

@@ -2,12 +2,13 @@
 # MCM 2026 Problem C: "The Invisible Hand" - Global Governance Config
 # Role: Strategic Metadata & Parameter Orchestration
 # Standard: O-Prize / INFORMS Journal / High-Performance Computing
+# Version: 4.5.0-Bayesian-Final
 # ==============================================================================
 
 project:
   name: "DWTS_Latent_Inference_Project"
-  version: "4.1.0-Platinum-Refactored"
-  random_seed: 2026  # 固化随机种子，确保大规模仿真可复现 (Reproducibility)
+  version: "4.5.0"
+  random_seed: 2026  # [关键] 固化随机种子，确保大规模仿真可复现 (Reproducibility)
   description: "Reconstructing latent fan preference via Bayesian Inverse Optimization."
 
 # ------------------------------------------------------------------------------
@@ -29,104 +30,122 @@ paths:
 # 2. 赛制机制定义 (Mechanism Governance)
 # ------------------------------------------------------------------------------
 mechanisms:
-  # 排名结合法 (Ordinal Aggregation)
+  # [S1-S2, S28+] 排名结合法 (Ordinal Aggregation)
   # 物理意义：Rank 机制起到了 'Low-pass Filter' 作用，截断了粉丝极端投票的影响
   rank_based_seasons: [1, 2, 28, 29, 30, 31, 32, 33, 34]
 
-  # 百分比结合法 (Cardinal Aggregation)
+  # [S3-S27] 百分比结合法 (Cardinal Aggregation)
   # 物理意义：Percent 机制是 'Signal Amplifier'，放大了流量明星的长尾效应
+  # 也是 "Controversy" 高发区 (如 Bobby Bones @ S27)
   percent_based_seasons: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
-  # 结构性突变点 (Season 28 Rule Change)
+  # 结构性突变点 (Structural Break)
   transition_season: 28
 
-  # 评委救济机制 (Judges' Save)
-  # 学术价值：这是 MCMC 的强约束 (Hard Constraint) —— Bottom Two 的总分必须是全场最低
+  # 评委救济机制 (Judges' Save) - 对应 C++ 中的 Soft-Constraint 逻辑
   judge_save:
     active_from: 28
-    candidate_pool_size: 2
+    candidate_pool_size: 2  # Bottom Two
     veto_logic: "Professional_Override"
 
 # ------------------------------------------------------------------------------
-# 3. ETL 基础配置 (Stage 1 Parsing Logic) - [REFACTORED: 修复 KeyError]
-# ------------------------------------------------------------------------------
-etl:
-  # 物理意义：解析宽表列名的“正则表达式手术刀”
-  # 匹配示例: "week1_judge2_score" -> Group 1: 1 (Week), Group 2: 2 (Judge Slot)
-  # 使用双反斜杠转义以兼容 Python 字符串解析
-  regex: "week(\\d+)_judge(\\d+)_score"
-
-  # 物理约束：评委打分的合法区间 (用于 DataValidator 审计)
-  score_range: [1.0, 10.0]
-
-  # 鲁棒性标准化参数 (Robust Z-Score Scaling Factor)
-  # 1.3489 是将 IQR 映射为标准差的理论常数 (Gaussian Assumption)
-  robust_scaling_factor: 1.3489
-
-# ------------------------------------------------------------------------------
-# 4. 贝叶斯推理超参数 (Task 1: Bayesian Inference Engine)
+# 3. 贝叶斯推理超参数 (Task 1: Bayesian Inference Engine)
+# [物理对齐]: 此处参数直接注入 C++ LikelihoodEvaluator
 # ------------------------------------------------------------------------------
 inference:
   # MCMC 采样策略 (对齐 23 核 CPU 并行)
   mcmc_strategy:
     n_chains: 23
-    samples_per_chain: 100000
-    burn_in_ratio: 0.2
-    thinning: 10
-    jump_size: 0.05          # 初始步长 epsilon
+    samples_per_chain: 100000 # 保证 ESS > 1000
+    burn_in_ratio: 0.5        # 激进预热，确保丢弃非平稳段
+    thinning: 20              # 稀疏化步长，降低自相关性
+    jump_size: 0.05           # 初始步长 (后续由 Dual-Averaging 自动调整)
+    return_traces: true       # 开启轨迹回传，用于画 Trace Plot
 
-  # 约束与惩罚刚度 (Likelihood Hyperparameters)
-  # 物理意义：决定了违反历史事实的代价有多大 (Lambda)
-  # [重构建议]: 这里的 penalty 使用平滑的二次项 (L2 Hinge Loss)
+  # 能量函数刚度 (Likelihood Stiffness) & 先验强度
   constraints:
-    rank_tau: 0.05                     # Soft-Rank 温度，越小越接近硬排名
-    rank_violation_penalty: 150.0      # 违反排名顺序的惩罚
-    bottom_two_penalty_weight: 1500.0  # 违反 "Bottom Two" 事实的惩罚 (硬约束)
-    score_margin_penalty: 500.0        # 分数差距惩罚 (Percent 模式专用)
-    entropy_regularization: 0.08       # 增加最大熵正则，防止过拟合于极端得票率
+    # [Soft-Rank] 温度系数：越小越逼近真实排名，但梯度越陡峭。0.05 是经验上的帕累托最优。
+    rank_tau: 0.05
 
-  # 先验强度 (Bayesian Priors)
+    # [Hard Constraint] 淘汰事实违规惩罚：必须足够大以形成“势能井”
+    rank_violation_penalty: 1200.0
+
+    # [Soft Constraint] 危险区信号惩罚：较弱的约束，允许偶尔违反
+    bottom_two_penalty_weight: 150.0
+
+    # [Bayesian Prior] 先验置信度 (Dirichlet Concentration Strength)
+    # 物理意义：相当于我们有多少个“虚拟样本”支持 Zipf 分布。
+    # 这是一个关键的 Sensitivity Analysis 参数：
+    # Low (10.0) -> 数据驱动，容易过拟合；High (100.0) -> 强先验，压制数据噪音。
+    prior_strength: 50.0
+
+  # 赛制特例配置
   priors:
-    zipf_alpha_standard: 1.2
-    zipf_alpha_allstar: 0.8
-    prior_strength: 0.15
+    zipf_alpha_standard: 1.2  # 标准长尾分布
+    zipf_alpha_allstar: 0.8   # 全明星赛季 (S15) 流量更扁平
 
 # ------------------------------------------------------------------------------
-# 5. 特征工程参数 (Feature Engineering)
+# 4. 启发式先验因子权重 (Task 1 & 3: The Gravity Model)
+# [学术核心]: 定义 "Popularity Gravity" = w1*Ind + w2*Partner + w3*Momentum
 # ------------------------------------------------------------------------------
+factor_anchors:
+  # 动态因子权重
+  partner_alpha_weight: 0.45       # 舞伴的“带粉能力”
+  technical_momentum_weight: 0.25  # 选手的“成长剧本” (Score Delta)
+
+  # 行业原生流量偏置 (Static Industry Bias)
+  # 物理直觉：基于历年数据的先验概率增益 (Base Probability Shift)
+  # 这是一个很好的图表素材：Industry Impact
+  industry_base_bias:
+    "Reality Star": 0.20        # 流量之王
+    "Social Media Personality": 0.18
+    "Music Industry": 0.15      # 乡村歌手属于此类 (Bobby Bones)
+    "Athlete": 0.12             # 粉丝粘性高但基数差异大
+    "Screen Industry": 0.08     # 演员主要看作品，粘性一般
+    "Model": 0.05
+    "Politician": -0.05         # 争议大，通常不仅不吸粉还招黑
+    "Other": 0.0
+
+# ------------------------------------------------------------------------------
+# 5. ETL 基础配置 (Feature Engineering)
+# ------------------------------------------------------------------------------
+etl:
+  regex: "week(\\d+)_judge(\\d+)_score"
+  score_range: [1.0, 10.0]
+
 features:
-  rolling_window:
-    min_periods: 1
-
+  # 行业归一化映射 (Reducing High Cardinality)
   industry_mapping:
-    "NFL Player": "Athlete_Professional"
-    "NBA Player": "Athlete_Professional"
-    "Olympic Athlete": "Athlete_Professional"
-    "Singer": "Music_Industry"
-    "Rapper": "Music_Industry"
-    "R&B Singer": "Music_Industry"
-    "Actor": "Screen_Industry"
-    "Actress": "Screen_Industry"
-    "TV Personality": "Media_Native"
-    "Reality Star": "Media_Native"
-    "Model": "Aesthetic_Industry"
-    "Politician": "Controversial_Public_Figure"
-    "Other": "Baseline"
+    "NFL Player": "Athlete"
+    "NBA Player": "Athlete"
+    "Olympic Athlete": "Athlete"
+    "UFC Fighter": "Athlete"
+    "Country Singer": "Music Industry"
+    "Rapper": "Music Industry"
+    "Pop Star": "Music Industry"
+    "Reality TV Star": "Reality Star"
+    "Bachelor/Bachelorette": "Reality Star"
+    "Actor": "Screen Industry"
+    "Actress": "Screen Industry"
+    "Comedian": "Screen Industry"
+    "Political Figure": "Politician"
+    "Activist": "Politician"
 
   age_segmentation:
     bins: [0, 25, 40, 60, 100]
-    labels: ["GenZ", "Millennial", "GenX", "Senior"]
+    labels: ["GenZ", "Millennial", "GenX", "Boomer"]
 
 # ------------------------------------------------------------------------------
-# 6. 机制设计参数 (Task 4: Mechanism Design)
+# 6. 机制设计参数 (Task 4: Mechanism Design - DAW System)
 # ------------------------------------------------------------------------------
 task4_mechanism_design:
   # 动态权重函数 w(t) = Sigmoid(k * (t - t0))
   # 物理意义：赛季初期重人气（Engagement），后期重技术（Meritocracy）
   dynamic_weighting:
     sigmoid_k: 0.5
-    sigmoid_t0: 0.6
+    sigmoid_t0: 0.6  # 在赛程 60% 处发生权重反转
 
-  # 熔断机制阈值
+  # 熔断机制阈值 (Circuit Breaker)
   circuit_breaker:
-    vote_inequality_cap: 0.8  # 基尼系数上限，防止粉丝票过于集中导致的“算法霸权”
+    vote_inequality_cap: 0.75  # 基尼系数上限，防止粉丝票过于集中
+    divergence_threshold: 5    # 排名差异 (Rank_Fan - Rank_Judge) 熔断线

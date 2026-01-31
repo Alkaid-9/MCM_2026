@@ -520,12 +520,4 @@ CMakeFiles/mcm_core_lib.dir/src/mcmc_sampler.cpp.o: \
  /mnt/d/Code/MCM_2026/cpp_kernel/include/math_utils.hpp \
  /mnt/d/Code/MCM_2026/cpp_kernel/include/rng.hpp \
  /mnt/d/Code/MCM_2026/cpp_kernel/include/diagnostics.hpp \
- /usr/include/c++/13/iostream /usr/include/c++/13/iomanip \
- /usr/include/c++/13/locale \
- /usr/include/c++/13/bits/locale_facets_nonio.h /usr/include/c++/13/ctime \
- /usr/include/x86_64-linux-gnu/c++/13/bits/time_members.h \
- /usr/include/x86_64-linux-gnu/c++/13/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/13/bits/codecvt.h \
- /usr/include/c++/13/bits/locale_facets_nonio.tcc \
- /usr/include/c++/13/bits/locale_conv.h \
- /usr/include/c++/13/bits/quoted_string.h
+ /usr/include/c++/13/iostream
