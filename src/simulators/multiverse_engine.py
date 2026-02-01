@@ -12,6 +12,9 @@ from tqdm import tqdm
 from typing import List, Dict, Any
 from scipy.stats import rankdata
 from src.etl.config_loader import ConfigLoader
+from src.simulators.mechanism_sandbox import evaluate_elimination
+
+
 
 class MultiverseEngine:
     """
@@ -63,89 +66,88 @@ class MultiverseEngine:
 
         return w_j
 
-    def simulate_season(self, season_id: int, mode: str = "RANK", daw_params: Dict = None) -> List[Dict]:
+    def simulate_season(self, season_id: int, mode="RANK", daw_params=None):
         """
-        [核心算法] 单赛季全时序重赛模拟。
-
-        :param season_id: 目标赛季
-        :param mode: "RANK" | "PERCENT" | "DAW"
-        :param daw_params: (可选) DAW 优化的 (k, t0) 参数
-        :return: 包含该赛季每一位选手、每一周模拟排名的列表 (Dict List)
+        全赛季重赛模拟核心。
         """
+        # 提取当前赛季的原始全量数据，用于对照历史事实
         season_data = self.df[self.df['season'] == season_id].copy()
-
-        # 确定赛季总周数（用于 DAW 进度计算）
         weeks = sorted(season_data['week_num'].unique())
         total_weeks = max(weeks) if weeks else 0
-
         season_history = []
 
-        # 遍历每一周 (Step-wise Counterfactual)
-        for w in weeks:
-            # 提取当周快照
-            week_df = season_data[season_data['week_num'] == w].reset_index(drop=True)
-            if len(week_df) < 2: continue # 决赛或异常周跳过
+        # 初始化当前宇宙的幸存者
+        sim_survivors = set(season_data['celebrity_name'].unique())
+        history = []
 
-            # 1. 准备物理内核输入
+        mode_map = {"PERCENT": 0, "RANK": 1, "DAW": 2}
+        m_type = mode_map.get(mode, 1)
+
+        for w in weeks:
+            # 1. 提取当前宇宙幸存者在这一周的表现
+            week_mask = (season_data['week_num'] == w) & (season_data['celebrity_name'].isin(sim_survivors))
+            week_df = season_data[week_mask].reset_index(drop=True)
+
+            if len(week_df) < 2: break  # 决赛或异常，停止迭代
+
             j_scores = week_df['week_avg_score'].values.astype(np.float64)
             f_votes = week_df['est_fan_vote_mu'].values.astype(np.float64)
 
-            # 2. 确定权重
-            w_j = 0.5 # 默认对等权重
+            # 2. 确定权重与 Save 规则
+            w_j = 0.5
             if mode == "DAW":
                 w_j = self._get_daw_weight(w, total_weeks, daw_params)
+            enable_save = (season_id >= 28)
 
-            # 3. 计算本周模拟得分 (Simulated Scores)
-            # 注意：这里我们计算全员得分，而不仅仅是淘汰者
-            sim_scores = np.zeros(len(week_df))
+            # 3. 调用 Numba 内核判定谁被淘汰
+            elim_idx = evaluate_elimination(j_scores, f_votes, m_type, w_j, enable_save)
+            loser_name = week_df.loc[elim_idx, 'celebrity_name']
 
-            if mode == "PERCENT":
-                # 百分比制：分数占比 + 投票占比 (越大越好)
-                j_pct = j_scores / (np.sum(j_scores) + 1e-9)
-                sim_scores = j_pct + f_votes
+            # ------------------------------------------------------------------
+            # 4. 【核心修复】：定义命运背离点 (is_anomaly)
+            # ------------------------------------------------------------------
+            # 找到历史上真实这一周被淘汰的人
+            hist_loser_slice = season_data[(season_data['week_num'] == w) &
+                                           (season_data['final_status'] == 'Eliminated')]
+            actual_historical_loser = hist_loser_slice['celebrity_name'].iloc[
+                0] if not hist_loser_slice.empty else "NONE"
 
-            elif mode == "RANK":
-                # 排名制：Rank(J) + Rank(F) (越小越好)
-                # 为了统一逻辑，我们取负号，变成“越大越好”
-                j_rank = rankdata(-j_scores, method='min')
-                f_rank = rankdata(-f_votes, method='min')
-                sim_scores = -(j_rank + f_rank)
+            # 对比：当前模拟宇宙的败者 vs 历史真实败者
+            is_anomaly = (loser_name != actual_historical_loser)
+            # ------------------------------------------------------------------
 
-            elif mode == "DAW":
-                # DAW：动态加权排名 (越小越好 -> 取负)
-                j_rank = rankdata(-j_scores, method='min')
-                f_rank = rankdata(-f_votes, method='min')
-                sim_scores = -(w_j * j_rank + (1.0 - w_j) * f_rank)
+            # 5. 计算本周全员排名 (用于后续 SNR 审计)
+            # 根据赛制逻辑重新计算得分
+            if m_type == 0:  # PERCENT
+                sim_scores = (j_scores / (j_scores.sum() + 1e-9)) + f_votes
+            elif m_type == 1:  # RANK
+                sim_scores = -(rankdata(-j_scores, method='min') + rankdata(-f_votes, method='min'))
+            else:  # DAW
+                j_r = rankdata(-j_scores, method='min')
+                f_r = rankdata(-f_votes, method='min')
+                sim_scores = -(w_j * j_r + (1.0 - w_j) * f_r)
 
-            # 4. 生成模拟排名 (1=Winner, N=Loser)
-            # sim_scores 越大越好，所以降序排列
             sim_placements = rankdata(-sim_scores, method='min')
 
-            # 5. 记录结果 (Data Contract Alignment)
-            # 【关键修复】：这里必须使用标准列名，供 SurvivalAnalyst 使用
+            # 6. 记录存档 (Contract Alignment)
             for i in range(len(week_df)):
                 record = {
                     'season': season_id,
                     'week_num': w,
                     'celebrity_name': week_df.iloc[i]['celebrity_name'],
-
-                    # --- 下游分析必需的标准列 ---
-                    'week_avg_score': j_scores[i],       # 原始技术分
-                    'est_fan_vote_mu': f_votes[i],       # 反演粉丝票
-                    'final_status': week_df.iloc[i]['final_status'], # 生存状态元数据
-                    'eliminated_week': week_df.iloc[i].get('eliminated_week', np.nan),
-
-                    # --- 模拟结果 ---
+                    'est_fan_vote_mu': f_votes[i],
+                    'week_avg_score': j_scores[i],
+                    'actual_judges_score': j_scores[i],
                     'sim_score': sim_scores[i],
-                    'sim_placement': sim_placements[i],  # 模拟排名
-                    'universe': mode,                    # 平行宇宙标识
-                    'judge_weight_applied': w_j,
-
-                    # --- 辅助累积指标 ---
-                    'cum_avg_tech_score': week_df.iloc[i].get('cum_avg_score', j_scores[i]),
-                    'cum_avg_fan_vote': week_df.iloc[i].get('est_fan_vote_mu', f_votes[i])
+                    'sim_placement': sim_placements[i],
+                    'universe': mode,
+                    'final_status': week_df.iloc[i]['final_status'],
+                    'is_regime_anomaly': is_anomaly  # 现在定义好了
                 }
                 season_history.append(record)
+
+            # 7. 物理剔除：被淘汰者从当前宇宙消失 (蝴蝶效应)
+            sim_survivors.remove(loser_name)
 
         return season_history
 

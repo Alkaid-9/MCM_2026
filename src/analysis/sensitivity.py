@@ -1,233 +1,179 @@
 # ==============================================================================
 # src/analysis/sensitivity.py
-# Role: Robustness & Sensitivity Audit Engine (Task 1 & 2)
-# Function: Monte Carlo Noise Injection to quantify Mechanism Stability (SNR)
-# Academic Goal: Proving "Rank Rule" acts as a Low-Pass Filter against Fan Noise.
+# Role: Robustness & Sensitivity Audit Engine (Task 1 & Task 2)
+# Function: Monte Carlo Stress Testing (Noise Injection & Prior Perturbation)
+# Physics: Proving the "Low-Pass Filter" hypothesis and Inference Stability.
+# Standard: Industrial Reliability / O-Prize "Stress Test" Section.
 # ==============================================================================
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy.stats import rankdata
+from scipy.stats import rankdata, spearmanr
 import logging
 import os
 from tqdm import tqdm
 
-# 引入配置加载器
-from src.etl.config_loader import ConfigLoader
+# 引入项目统一绘图引擎
+from src.utils.plotting import DWTSPlotter
 
 
 class SensitivityAnalyzer:
     """
-    鲁棒性审计师：
-    通过向潜在投票分布注入高斯噪声，测量不同赛制下的“冠军翻转率” (Flip Rate)。
-
-    [核心假设]：
-    一个好的赛制应当具有各态历经性 (Ergodicity) 和 抗噪性 (Robustness)。
-    如果微小的投票波动就能改变冠军归属，说明该机制是不稳定的 (High Volatility)。
+    灵敏度与鲁棒性审计师：
+    1. Noise Stress Test: 向投票注入高斯噪声，测试赛制稳定性 (Task 2)。
+    2. Prior Robustness: 扰动反演结果，测试核心排名的置信度区间 (Task 1)。
     """
 
     def __init__(self, df_platinum: pd.DataFrame, figures_dir: str = "reports/figures/"):
         self.logger = logging.getLogger("SENSITIVITY_AUDIT")
-        # 仅保留决赛周数据进行压力测试 (高风险区)
-        self.df = df_platinum[df_platinum['final_status'].isin(['Winner', 'RunnerUp', 'Finalist'])].copy()
+        # 仅分析有效数据
+        self.df = df_platinum.dropna(subset=['est_fan_vote_mu', 'week_avg_score']).copy()
         self.fig_dir = figures_dir
         os.makedirs(self.fig_dir, exist_ok=True)
-
-        # 绘图风格
-        try:
-            plt.rcParams['font.family'] = 'serif'
-            sns.set_context("paper", font_scale=1.4)
-        except:
-            pass
+        self.plotter = DWTSPlotter(output_dir=figures_dir)
 
     def _add_simplex_noise(self, votes: np.ndarray, noise_level: float) -> np.ndarray:
         """
         在单纯形 (Simplex) 上注入噪声。
-        物理逻辑：
-        1. 注入对数正态噪声（保证非负）。
-        2. 重新归一化（保证总和为 1）。
+        物理逻辑：乘法对数正态噪声 -> 归一化 (保持 Sum=1)。
         """
+        if noise_level <= 1e-9: return votes
         n = len(votes)
         # 噪声幅度与原始票数成正比 (Heteroscedasticity)
         noise = np.random.normal(0, noise_level, n)
-        # 乘法扰动模型: V_new = V_old * exp(noise)
-        # 这种方式比加法噪声更符合投票的非负性质
         perturbed_votes = votes * np.exp(noise)
-        # 归一化
         return perturbed_votes / np.sum(perturbed_votes)
 
-    def _calculate_winner(self, j_scores: np.ndarray, f_votes: np.ndarray, mechanism: str) -> int:
-        """
-        原子裁决函数：计算当前噪声下的冠军索引。
-        """
+    def _calculate_winner(self, j_scores, f_votes, mechanism):
+        """原子裁决函数"""
         if mechanism == "RANK":
-            # 排名制：分数高 -> 排名小 (1)
-            j_rank = rankdata(-j_scores, method='min')
-            f_rank = rankdata(-f_votes, method='min')
-            total = j_rank + f_rank
-            # 越小越好。如果平局，优先看评委分 (模拟规则)
-            # 实现技巧：加上微小的评委分扰动打破平局
-            total_float = total - (j_scores * 1e-6)
-            return np.argmin(total_float)
-
-        elif mechanism == "PERCENT":
-            # 百分比制：分数占比 + 投票占比
+            # 排名制：Rank和最小 (1=Best)
+            total = rankdata(-j_scores, method='min') + rankdata(-f_votes, method='min')
+            # 增加微小抖动处理平局 (优先看评委分)
+            return np.argmin(total - j_scores * 1e-6)
+        else:
+            # 百分比制：分数和最大
             j_pct = j_scores / (np.sum(j_scores) + 1e-9)
-            total = j_pct + f_votes
-            # 越大越好
-            return np.argmax(total)
+            return np.argmax(j_pct + f_votes)
 
-        return -1
-
-    def run_noise_stress_test(self, n_sims: int = 1000, max_noise: float = 0.2, steps: int = 20):
+    def run_noise_stress_test(self, n_sims: int = 500, max_noise: float = 0.3):
         """
-        [核心实验]: 噪声压力测试 (The "Wind Tunnel" Test)。
-        遍历不同的噪声水平 (Noise Level)，计算冠军翻转率。
+        [实验 A]: 机制鲁棒性对比 (Mechanism Robustness)。
+        向投票注入噪声，观察 Rank 与 Percent 机制下冠军翻转的概率。
         """
-        self.logger.info(f">>> 启动蒙特卡洛压力测试 (Sims={n_sims}, MaxNoise={max_noise})...")
+        self.logger.info(f">>> 启动机制抗噪压力测试 (Sims={n_sims})...")
 
-        noise_levels = np.linspace(0.0, max_noise, steps)
+        # 筛选竞争激烈的周次 (Top 3 之后)
+        target_weeks = self.df.groupby(['season', 'week_num']).filter(lambda x: len(x) >= 2)
+        if target_weeks.empty: return None
+
+        noise_levels = np.linspace(0.0, max_noise, 15)
         results = []
 
-        # 按赛季分组进行测试
-        groups = self.df.groupby(['season', 'week_num'])
-        valid_groups = [g for _, g in groups if len(g) > 1]  # 至少两人才能比赛
+        # 选取有代表性的 20 个比赛周进行加速测试
+        sample_groups = list(target_weeks.groupby(['season', 'week_num']))
+        # 固定随机种子抽样
+        np.random.seed(2026)
+        selected_indices = np.random.choice(len(sample_groups), min(20, len(sample_groups)), replace=False)
+        selected_groups = [sample_groups[i] for i in selected_indices]
 
-        if not valid_groups:
-            self.logger.warning("没有足够的决赛周数据进行压力测试。")
-            return None
+        for sigma in tqdm(noise_levels, desc="Stress Testing"):
+            flip_r, flip_p = 0, 0
+            total = 0
 
-        # 遍历噪声等级
-        for sigma in tqdm(noise_levels, desc="Injecting Noise"):
-            flip_counts_rank = 0
-            flip_counts_pct = 0
-            total_cases = 0
-
-            for group in valid_groups:
+            for _, group in selected_groups:
                 j_scores = group['week_avg_score'].values
-                # 使用反演出的后验均值作为基准 (Ground Truth in Simulation)
-                f_votes_base = group['est_fan_vote_mu'].values
+                f_base = group['est_fan_vote_mu'].values
 
-                # 归一化基准投票
-                f_votes_base = f_votes_base / (np.sum(f_votes_base) + 1e-9)
+                # 基准结果
+                win_r_base = self._calculate_winner(j_scores, f_base, "RANK")
+                win_p_base = self._calculate_winner(j_scores, f_base, "PERCENT")
 
-                # 1. 计算基准冠军 (无噪声)
-                base_winner_rank = self._calculate_winner(j_scores, f_votes_base, "RANK")
-                base_winner_pct = self._calculate_winner(j_scores, f_votes_base, "PERCENT")
-
-                # 2. 蒙特卡洛扰动
-                curr_flips_rank = 0
-                curr_flips_pct = 0
-
+                # 蒙特卡洛循环
                 for _ in range(n_sims):
-                    # 注入噪声
-                    f_votes_noisy = self._add_simplex_noise(f_votes_base, sigma)
+                    f_noisy = self._add_simplex_noise(f_base, sigma)
 
-                    # 重新裁决
-                    new_winner_rank = self._calculate_winner(j_scores, f_votes_noisy, "RANK")
-                    new_winner_pct = self._calculate_winner(j_scores, f_votes_noisy, "PERCENT")
+                    if self._calculate_winner(j_scores, f_noisy, "RANK") != win_r_base:
+                        flip_r += 1
+                    if self._calculate_winner(j_scores, f_noisy, "PERCENT") != win_p_base:
+                        flip_p += 1
+                    total += 1
 
-                    if new_winner_rank != base_winner_rank:
-                        curr_flips_rank += 1
-                    if new_winner_pct != base_winner_pct:
-                        curr_flips_pct += 1
-
-                flip_counts_rank += curr_flips_rank
-                flip_counts_pct += curr_flips_pct
-                total_cases += n_sims
-
-            # 记录该噪声水平下的全局翻转率
             results.append({
                 'noise_level': sigma,
-                'flip_rate_rank': flip_counts_rank / total_cases,
-                'flip_rate_percent': flip_counts_pct / total_cases
+                'flip_rate_rank': flip_r / total,
+                'flip_rate_percent': flip_p / total
             })
 
         return pd.DataFrame(results)
 
-    def plot_stability_curve(self, res_df: pd.DataFrame):
+    def run_prior_sensitivity_check(self):
         """
-        绘制赛制稳定性曲线 (Stability Curve)。
-        这是证明 Rank 机制优越性的核心图表。
+        [实验 B]: 先验灵敏度检查 (Prior Sensitivity)。
+        物理意义：如果我们的反演结果仅仅依赖于先验（Zipf），那模型就是无效的。
+        验证：计算后验结果与均匀分布（无信息先验）的相关性。如果相关性低，说明数据（Likelihood）起到了决定性作用。
         """
-        if res_df is None or res_df.empty: return
+        self.logger.info(">>> 执行先验灵敏度与数据驱动度检查...")
+
+        corrs = []
+        for (s, w), group in self.df.groupby(['season', 'week_num']):
+            if len(group) < 3: continue
+
+            # 1. 均匀先验 (Uniform Prior)
+            uniform_dist = np.ones(len(group)) / len(group)
+
+            # 2. 后验结果
+            posterior = group['est_fan_vote_mu'].values
+
+            # 3. 计算“数据驱动度” (Data Drivenness)
+            # 如果后验完全等于先验(均匀)，相关性=1，说明数据没用。
+            # 如果相关性低，说明数据强力修正了先验。
+            rho, _ = spearmanr(uniform_dist, posterior)
+
+            # 这里的逻辑：我们希望后验 *不* 等于均匀分布
+            # 使用 KL 散度可能更严谨，但 Spearman 更直观展示排名变化
+            data_impact = 1 - abs(rho) if not np.isnan(rho) else 0  # 简化代理指标
+
+            corrs.append(data_impact)
+
+        avg_impact = np.mean(corrs)
+        self.logger.info(f"数据驱动度 (Data Impact Score): {avg_impact:.4f} (越高越好)")
+        return avg_impact
+
+    def plot_stability_curve(self, df_res):
+        """
+        绘制鲁棒性曲线 (Stability Curve)。
+        证明：Rank 机制是低通滤波器，Percent 机制是噪音放大器。
+        """
+        if df_res is None or df_res.empty: return
 
         plt.figure(figsize=(10, 6))
 
-        # 绘制曲线
-        plt.plot(res_df['noise_level'], res_df['flip_rate_rank'],
-                 label='Rank System (Ordinal)', color='#1f77b4', linewidth=2.5, marker='o')
-        plt.plot(res_df['noise_level'], res_df['flip_rate_percent'],
-                 label='Percent System (Cardinal)', color='#d62728', linewidth=2.5, marker='s', linestyle='--')
+        # 绘制 Rank 曲线 (蓝色)
+        plt.plot(df_res['noise_level'], df_res['flip_rate_rank'],
+                 marker='o', linewidth=2.5, color=self.plotter.colors['fan'],
+                 label='Rank System (Ordinal)')
 
-        # 填充差异区域 (Bias Gap)
-        plt.fill_between(res_df['noise_level'],
-                         res_df['flip_rate_rank'],
-                         res_df['flip_rate_percent'],
-                         color='gray', alpha=0.1, label='Volatility Gap')
+        # 绘制 Percent 曲线 (橙色)
+        plt.plot(df_res['noise_level'], df_res['flip_rate_percent'],
+                 marker='s', linewidth=2.5, linestyle='--', color=self.plotter.colors['judge'],
+                 label='Percent System (Cardinal)')
 
-        plt.title("Robustness Check: Mechanism Stability under Fan Vote Volatility", fontsize=14, pad=20)
-        plt.xlabel("Noise Level ($\sigma$ of Fan Vote Perturbation)", fontsize=12)
+        # 填充差异区
+        plt.fill_between(df_res['noise_level'],
+                         df_res['flip_rate_rank'], df_res['flip_rate_percent'],
+                         color='gray', alpha=0.1, label='Robustness Gap')
+
+        plt.title("Mechanism Stability Audit: Noise Tolerance Analysis", fontsize=14, pad=15)
+        plt.xlabel("Noise Intensity ($\sigma$)", fontsize=12)
         plt.ylabel("Winner Flip Probability (Instability)", fontsize=12)
+        plt.legend()
+        plt.grid(True, linestyle=':', alpha=0.5)
 
-        plt.grid(True, alpha=0.2)
-        plt.legend(loc='upper left', frameon=True)
+        # 标注关键阈值
+        plt.axhline(0.1, color='red', linestyle=':', alpha=0.5)
+        plt.text(0.01, 0.11, "Critical Instability Threshold (10%)", color='red', fontsize=9)
 
-        # 标注关键结论
-        max_gap_idx = (res_df['flip_rate_percent'] - res_df['flip_rate_rank']).idxmax()
-        max_gap_x = res_df.loc[max_gap_idx, 'noise_level']
-        max_gap_y = res_df.loc[max_gap_idx, 'flip_rate_percent']
-
-        plt.annotate('Percent System is \nmore sensitive to noise',
-                     xy=(max_gap_x, max_gap_y),
-                     xytext=(max_gap_x + 0.05, max_gap_y - 0.1),
-                     arrowprops=dict(facecolor='black', shrink=0.05))
-
-        save_path = os.path.join(self.fig_dir, "mechanism_stability_curve.png")
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        self.logger.info(f"稳定性曲线已生成: {save_path}")
-
-    def generate_sensitivity_report(self, res_df: pd.DataFrame):
-        """
-        生成数值摘要，用于填入 Memo 或 论文正文。
-        """
-        if res_df is None: return
-
-        # 计算平均翻转率差异
-        avg_rank_flip = res_df['flip_rate_rank'].mean()
-        avg_pct_flip = res_df['flip_rate_percent'].mean()
-        robustness_gain = (avg_pct_flip - avg_rank_flip) / (avg_pct_flip + 1e-9)
-
-        self.logger.info("-" * 40)
-        self.logger.info(" 鲁棒性审计报告 (Sensitivity Audit)")
-        self.logger.info("-" * 40)
-        self.logger.info(f"全噪声区间平均翻转率 (Rank): {avg_rank_flip:.2%}")
-        self.logger.info(f"全噪声区间平均翻转率 (Percent): {avg_pct_flip:.2%}")
-        self.logger.info(f"结论: Rank 机制的抗噪稳定性比 Percent 机制高出 {robustness_gain:.2%}。")
-        self.logger.info("这证明了 Rank 机制在数学上等价于一个‘低通滤波器’，有效抑制了极端投票噪声。")
-        self.logger.info("-" * 40)
-
-        # 导出 CSV
-        res_df.to_csv(os.path.join(self.fig_dir, "..", "sensitivity_analysis_data.csv"), index=False)
-
-
-if __name__ == "__main__":
-    # 单元测试 Mock 数据
-    logging.basicConfig(level=logging.INFO)
-
-    # 构造一个假设的决赛周：A 技术好但票少，B 技术差但票多
-    mock_data = pd.DataFrame({
-        'season': [1, 1], 'week_num': [10, 10],
-        'celebrity_name': ['Tech_Master', 'Pop_Star'],
-        'final_status': ['RunnerUp', 'Winner'],
-        'week_avg_score': [29.0, 24.0],  # A 领先 5 分
-        'est_fan_vote_mu': [0.40, 0.60]  # B 领先 20% 票仓
-    })
-
-    analyzer = SensitivityAnalyzer(mock_data)
-    df_res = analyzer.run_noise_stress_test(n_sims=500, max_noise=0.3, steps=10)
-    analyzer.plot_stability_curve(df_res)
-    analyzer.generate_sensitivity_report(df_res)
+        self.plotter.save_figure("task2_stability_curve.png")

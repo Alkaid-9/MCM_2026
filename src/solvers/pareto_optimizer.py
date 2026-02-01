@@ -14,6 +14,7 @@ import logging
 import os
 from joblib import Parallel, delayed
 from tqdm import tqdm
+from typing import Dict, Any
 
 # 引入核心组件
 from src.solvers.daw_engine import DAWEngine
@@ -40,6 +41,7 @@ class ParetoOptimizer:
         self.logger = logging.getLogger("PARETO_OPTIMIZER")
         self.df = df_platinum.copy()
         self.fig_dir = fig_dir
+
         # 实例化绘图引擎，确保色盘统一
         self.plotter = DWTSPlotter(output_dir=fig_dir)
         os.makedirs(self.fig_dir, exist_ok=True)
@@ -49,30 +51,28 @@ class ParetoOptimizer:
         self.simulator = MultiverseEngine(self.df)
         self.evaluator = MechanismEvaluator()
 
+        # 缓存结果
+        self.results_df = None
+
     def _evaluate_single_param_set(self, season_id: int, k: float, t0: float):
-        """
-        [原子任务]：在给定 (k, t0) 下重演整个赛季，并计算双指标。
-        该函数将被 joblib 并行调用。
-        """
-        # 1. 注入参数到 DAW 引擎 (通过 MultiverseEngine 的动态接口)
+        """[原子任务] 适配最新的标准列名"""
         history = self.simulator.simulate_season(
             season_id,
             mode="DAW",
             daw_params={'sigmoid_k': k, 'sigmoid_t0': t0}
         )
-
-        # 转换为 DataFrame
         sim_df = pd.DataFrame(history)
 
-        # 2. 计算双目标 (Equity, Efficiency)
-        equity, efficiency = self.evaluator.evaluate_regime_performance(sim_df)
+        # [关键修复] 对齐 MultiverseEngine 吐出的标准列名
+        if 'cum_avg_tech_score' not in sim_df.columns:
+            sim_df['cum_avg_tech_score'] = sim_df['week_avg_score']
 
-        return {
-            'k': k,
-            't0': t0,
-            'equity': equity,
-            'efficiency': efficiency
-        }
+        if 'cum_avg_fan_vote' not in sim_df.columns:
+            # 修改点：模拟器现在吐出的是 est_fan_vote_mu
+            sim_df['cum_avg_fan_vote'] = sim_df['est_fan_vote_mu']
+
+        equity, efficiency = self.evaluator.evaluate_regime_performance(sim_df)
+        return {'k': k, 't0': t0, 'equity': equity, 'efficiency': efficiency}
 
     def run_grid_search(self, season_id: int = 27, n_jobs: int = -1):
         """
@@ -84,17 +84,18 @@ class ParetoOptimizer:
         # 定义搜索网格
         # k: 斜率 [2.0, 20.0] (平缓 -> 激进)
         # t0: 切换点 [0.3, 0.8] (早期 -> 晚期)
-        k_range = np.linspace(2.0, 20.0, 15)
-        t0_range = np.linspace(0.3, 0.8, 15)
+        # 增加密度以获得平滑的前沿
+        k_range = np.linspace(2.0, 20.0, 20)
+        t0_range = np.linspace(0.3, 0.8, 20)
 
         param_grid = [(k, t0) for k in k_range for t0 in t0_range]
 
         # 并行计算 (利用多核优势)
-        self.logger.info(f"搜索空间大小: {len(param_grid)} 点 | 并行核心: {n_jobs}")
+        self.logger.info(f" 搜索空间大小: {len(param_grid)} 点 | 并行核心: {n_jobs}")
 
         results = Parallel(n_jobs=n_jobs)(
             delayed(self._evaluate_single_param_set)(season_id, k, t0)
-            for k, t0 in tqdm(param_grid, desc="Grid Search")
+            for k, t0 in tqdm(param_grid, desc="Pareto Grid Search")
         )
 
         self.results_df = pd.DataFrame(results)
@@ -107,14 +108,14 @@ class ParetoOptimizer:
             (1.0 - self.results_df['efficiency']) ** 2
         )
 
-        self.logger.info("搜索完成。正在寻找最优解...")
+        self.logger.info(" 搜索完成。正在寻找最优解...")
         return self.results_df
 
     def find_optimal_solution(self):
         """
         寻找最优参数组合 (The Recommended Policy).
         """
-        if not hasattr(self, 'results_df'):
+        if self.results_df is None:
             raise ValueError("请先运行 run_grid_search()!")
 
         # 最优解：距离乌托邦最近的点
@@ -123,110 +124,88 @@ class ParetoOptimizer:
 
         self.logger.info("-" * 40)
         self.logger.info("【最优机制参数推荐】")
-        self.logger.info(f"Sigmoid 斜率 (k) : {best_row['k']:.2f}")
-        self.logger.info(f"切换时间点 (t0) : {best_row['t0']:.2f} (约第 {int(best_row['t0'] * 10)} 周)")
+        self.logger.info(f" Sigmoid 斜率 (k) : {best_row['k']:.2f}")
+        self.logger.info(f" 切换时间点 (t0) : {best_row['t0']:.2f} (约第 {int(best_row['t0'] * 10)} 周)")
         self.logger.info("-" * 40)
-        self.logger.info(f"预期公平性 (Equity): {best_row['equity']:.4f}")
-        self.logger.info(f"预期参与度 (Effici): {best_row['efficiency']:.4f}")
+        self.logger.info(f" 预期公平性 (Equity): {best_row['equity']:.4f}")
+        self.logger.info(f" 预期参与度 (Effici): {best_row['efficiency']:.4f}")
         self.logger.info("-" * 40)
 
         return best_row
 
-    def plot_pareto_frontier(self, baseline_metrics: dict = None):
+    def plot_pareto_frontier(self, baseline_metrics: Dict[str, Any] = None):
         """
         绘制帕累托前沿热力图 (The Money Plot)。
         这幅图直接证明 Task 4 的 DAW 机制优于历史机制。
         """
-        if not hasattr(self, 'results_df'): return
+        if self.results_df is None: return
 
         df = self.results_df
         plt.figure(figsize=(12, 8))
 
         # 1. 绘制搜索空间 (散点)
-        # 颜色映射 t0 (切换时间)，大小映射 k (激进程度)
-        sc = plt.scatter(
-            df['efficiency'], df['equity'],
-            c=df['t0'], cmap='viridis',
-            s=df['k'] * 10, alpha=0.6, edgecolors='w', linewidth=0.5
-        )
+        # 颜色映射 t0 (切换时机)，大小映射 k (激进程度)
+        sc = plt.scatter(df['efficiency'], df['equity'],
+                         c=df['t0'], cmap='viridis',
+                         s=df['k'] * 5 + 20, alpha=0.6, edgecolors='none')
+
         cbar = plt.colorbar(sc)
-        cbar.set_label(r'Transition Timing ($t_0$)')
+        cbar.set_label(r'Transition Midpoint ($t_0$)')
 
         # 2. 绘制前沿包络线 (Convex Hull Approximation)
         # 简单的包络算法：按 Efficiency 排序，计算 Equity 的累计最大值
         df_sorted = df.sort_values('efficiency')
         frontier_equity = df_sorted['equity'].cummax()
 
-        plt.plot(df_sorted['efficiency'], frontier_equity,
-                 color='black', linestyle='--', alpha=0.6, linewidth=1.5,
-                 label='Pareto Frontier')
+        # 只保留真正的边界点
+        frontier_mask = df_sorted['equity'] == frontier_equity
+        frontier_df = df_sorted[frontier_mask]
+
+        plt.plot(frontier_df['efficiency'], frontier_df['equity'],
+                 color='black', linestyle='--', alpha=0.8, linewidth=2, label='Pareto Frontier')
 
         # 3. 标记最优解 (Best DAW)
         best = self.find_optimal_solution()
-        plt.scatter(
-            best['efficiency'], best['equity'],
-            color=self.plotter.colors['highlight'], s=300, marker='*',
-            label='Optimal DAW (Recommended)', zorder=10
-        )
+        plt.scatter(best['efficiency'], best['equity'],
+                    color='#d62728', s=300, marker='*',
+                    label='Optimal DAW (Recommended)', zorder=10, edgecolors='white')
 
         # 4. 标记历史基准 (如果提供)
         if baseline_metrics:
             if 'RANK' in baseline_metrics:
                 b = baseline_metrics['RANK']
-                # Rank = Merit (Judge Color) ?
-                # 不，Rank 制在之前的图中用的是冷色/蓝色，Percent 用的是暖色/橙色
-                # 这里为了保持一致：
-                # Rank (Historical Strict) -> Blue
-                # Percent (Historical Loose) -> Orange
                 plt.scatter(b['efficiency'], b['equity'],
                             color=self.plotter.colors['fan'], s=150, marker='s',
-                            label='Rank System', zorder=10)
+                            label='Rank System (Historical)', zorder=10, edgecolors='black')
 
             if 'PERCENT' in baseline_metrics:
                 b = baseline_metrics['PERCENT']
                 plt.scatter(b['efficiency'], b['equity'],
                             color=self.plotter.colors['judge'], s=150, marker='^',
-                            label='Percent System', zorder=10)
+                            label='Percent System (Historical)', zorder=10, edgecolors='black')
 
         # 5. 标记乌托邦点
         plt.scatter(1.0, 1.0, color='gold', s=200, marker='P',
-                    label='Utopia Point (Theoretical Max)', zorder=5)
+                    label='Utopia Point (Theoretical Max)', zorder=5, edgecolors='black')
 
         # 装饰
         plt.title("Multi-Objective Optimization: Equity vs. Efficiency Trade-off", fontsize=16, pad=15)
-        plt.xlabel("Engagement Metric (Fan Vote Impact)", fontsize=14)
-        plt.ylabel("Fairness Metric (Merit Correlation)", fontsize=14)
-        plt.legend(loc='lower left', frameon=True, framealpha=0.9)
+        plt.xlabel("Engagement Metric (Fan Influence $\\rho$)", fontsize=14)
+        plt.ylabel("Fairness Metric (Merit Correlation $\\rho$)", fontsize=14)
+        plt.legend(loc='lower left', frameon=True, framealpha=0.9, fontsize=11)
         plt.grid(True, linestyle=':', alpha=0.4)
 
-        # 限制坐标轴范围，聚焦右上角 (Performance Zone)
-        plt.xlim(0.3, 1.05)
-        plt.ylim(0.3, 1.05)
+        # 智能调整坐标轴范围
+        x_min = min(df['efficiency'].min(), 0.5)
+        y_min = min(df['equity'].min(), 0.5)
+        plt.xlim(x_min, 1.05)
+        plt.ylim(y_min, 1.05)
 
         self.plotter.save_figure("task4_pareto_frontier.png")
 
-    def generate_latex_report(self):
-        """
-        生成优化结果的 LaTeX 文本，供论文直接引用。
-        """
-        best = self.find_optimal_solution()
 
-        latex = r"""
-\begin{table}[htbp]
-  \centering
-  \caption{Optimal Parameters for DAW Mechanism (Pareto Solution)}
-  \begin{tabular}{lcl}
-    \toprule
-    \textbf{Parameter} & \textbf{Value} & \textbf{Physical Interpretation} \\
-    \midrule
-    Sigmoid Slope ($k$) & """ + f"{best['k']:.2f}" + r""" & Moderate transition speed, avoiding shock. \\
-    Midpoint ($t_0$)    & """ + f"{best['t0']:.2f}" + r""" & Power shifts to judges at """ + f"{best['t0']:.0%}" + r""" of the season. \\
-    \midrule
-    \textbf{Projected Outcome} & & \\
-    Fairness Index      & """ + f"{best['equity']:.4f}" + r""" & Significant improvement over historical average. \\
-    Engagement Index    & """ + f"{best['efficiency']:.4f}" + r""" & Retains high viewer impact. \\
-    \bottomrule
-  \end{tabular}
-\end{table}
-"""
-        return latex
+# --- 单元测试 ---
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    # Mock data execution would go here
+    print("ParetoOptimizer ready. Integrate with design_pipeline.py.")

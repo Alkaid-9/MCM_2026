@@ -1,20 +1,22 @@
 {
     "survival_metrics": {
-        "median_weeks_rank": Infinity,
-        "median_weeks_percent": 8.0,
-        "log_rank_p_value": 0.205409277566445
+        "rank_longevity": "Full Season (Finale Guaranteed)",
+        "percent_longevity": "7.0 Weeks",
+        "p_value": 0.018559759249382652
     },
     "sensitivity_metrics": {
-        "flip_rate_rank_at_0.1": 0.030921052631578946,
-        "flip_rate_percent_at_0.1": 0.02357236842105263,
-        "robustness_advantage": -0.31174991700084087
+        "noise_level": 0.10714285714285715,
+        "flip_rate_rank": 0.0702,
+        "flip_rate_percent": 0.0189
+    },
+    "snr_metrics": {
+        "avg_snr_gain_db": 0.577221947590453,
+        "champion_misalignment": 0.16382252559726962
     },
     "counterfactual_cases": {
         "Bobby_Bones_S27": {
             "actual": "Winner",
-            "counterfactual": "Winner",
-            "verdict": "Robust_Popularity (\u7edd\u5bf9\u6c11\u610f\u7edf\u6cbb)"
+            "counterfactual": "Eliminated Week 1 (Regime Shift)"
         }
-    },
-    "overall_verdict": "Our audit proves the Rank System provides a -31.2% stability advantage against fan noise. However, survival benefits remain marginally insignificant at current sample sizes."
+    }
 }

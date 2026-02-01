@@ -1,54 +1,95 @@
 # ==============================================================================
 # src/utils/exporter.py
-# Role: Automated Research Project Exporter (v4.8 - Production Grade)
-# Function: Generating professional LaTeX and Markdown code appendices.
-# Standard: Publication-ready syntax highlighting & modular structure mapping.
+# Role: Automated Research Deliverable Exporter (v6.1 - Interface Fix)
+# Function:
+#   1. Generating Code Appendix with syntax highlighting & structure tree.
+#   2. Converting Pandas DataFrames into IEEE-style LaTeX tables.
+# Fix: Renamed CodeExporter -> MCMProjectExporter to align with main.py.
 # ==============================================================================
 
 import os
 import time
+import logging
+import pandas as pd
 from pathlib import Path
-from typing import List, Set, Dict
+from typing import List, Optional
+
+
+class TableExporter:
+    """
+    [学术工具箱] LaTeX 表格生成器。
+    将 Pandas 数据框转化为符合顶刊标准的“三线表”。
+    """
+
+    @staticmethod
+    def df_to_latex(df: pd.DataFrame,
+                    caption: str,
+                    label: str,
+                    alignment: str = None) -> str:
+        """
+        核心转译函数。
+        """
+        if df.empty: return "% Empty DataFrame"
+
+        # 1. 基础格式化
+        latex_str = df.to_latex(
+            index=False,
+            column_format=alignment if alignment else 'l' + 'c' * (len(df.columns) - 1),
+            float_format="%.4f",
+            escape=True
+        )
+
+        # 2. 注入 Booktabs 风格
+        latex_str = latex_str.replace('\\toprule', '\\toprule\n')
+        latex_str = latex_str.replace('\\midrule', '\\midrule\n')
+        latex_str = latex_str.replace('\\bottomrule', '\\bottomrule\n')
+
+        # 3. 包装 Table 环境
+        wrapper = [
+            "\\begin{table}[htbp]",
+            "\\centering",
+            f"\\caption{{{caption}}}",
+            f"\\label{{{label}}}",
+            latex_str.strip(),
+            "\\end{table}"
+        ]
+
+        return "\n".join(wrapper)
 
 
 class MCMProjectExporter:
     """
-    项目导出引擎：
-    一键生成符合美赛/顶刊提交标准的代码附录。
-
-    【核心职能】：
-    1. 自动生成项目结构树 (ASCII Tree)。
-    2. 提取 Python/C++ 文档摘要生成索引表。
-    3. 自动处理 LaTeX 转义与 listings 高亮配置。
-    4. 过滤非核心文件 (Data, Logs, Build artifacts)。
+    [工程展示] 代码附录生成器。
+    (原 CodeExporter，重命名以匹配 main.py 接口)
     """
 
-    # --- 配置区域 ---
+    # 忽略列表 (噪音过滤)
     INCLUDE_EXTS = {'.py', '.cpp', '.hpp', '.h', '.yaml', '.cmake', '.txt'}
     EXCLUDE_DIRS = {
-        '__pycache__', '.git', '.vscode', 'venv', 'build', 'bin',
-        'lib', 'obj', 'data', 'logs', 'outputs', 'notebooks'
+        '__pycache__', '.git', '.idea', '.vscode', 'venv', 'env',
+        'build', 'bin', 'lib', 'obj', 'data', 'logs', 'reports', 'notebooks'
     }
     EXCLUDE_FILES = {
-        '.env', 'LICENSE', 'README.md', 'requirements.txt',
-        'mcm_core_lib.so', 'Code_Appendix.md'
+        '.env', '.DS_Store', 'requirements.txt', 'README.md',
+        'appendix_code.tex', 'mcm_core_lib.so'
     }
 
-    # LaTeX 样式定义 ( listings 宏包配置 )
+    # LaTeX 导言区 (代码高亮配置)
     LATEX_PREAMBLE = r"""
-% --- MCM Code Appendix Style Definition ---
+% --- Automated Code Appendix Style ---
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{booktabs} 
 
 \definecolor{codegreen}{rgb}{0,0.6,0}
 \definecolor{codegray}{rgb}{0.5,0.5,0.5}
 \definecolor{codepurple}{rgb}{0.58,0,0.82}
-\definecolor{backcolour}{rgb}{0.96,0.96,0.96}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
 
 \lstdefinestyle{mcmstyle}{
     backgroundcolor=\color{backcolour},   
     commentstyle=\color{codegreen},
-    keywordstyle=\color{magenta},
+    keywordstyle=\color{blue}\bfseries,
     numberstyle=\tiny\color{codegray},
     stringstyle=\color{codepurple},
     basicstyle=\ttfamily\scriptsize,
@@ -62,30 +103,36 @@ class MCMProjectExporter:
     showstringspaces=false,
     showtabs=false,                  
     tabsize=2,
-    frame=single
+    frame=single,
+    rulecolor=\color{codegray}
 }
 \lstset{style=mcmstyle}
-% ------------------------------------------
+% -------------------------------------
 """
 
     def __init__(self, project_root: str):
+        # 兼容 Path 对象或字符串
         self.root = Path(project_root).resolve()
-        self.scanned_files: List[Path] = []
+        self.scanned_files = []
         self.md_path = self.root / "Code_Appendix.md"
         self.tex_path = self.root / "appendix_code.tex"
+        self.logger = logging.getLogger("CODE_EXPORTER")
 
     def _generate_tree(self, dir_path: Path, prefix: str = "") -> str:
         """生成 ASCII 项目结构树"""
         tree_str = ""
         try:
-            items = sorted([item for item in dir_path.iterdir()
-                            if item.name not in self.EXCLUDE_DIRS
-                            and not item.name.startswith('.')])
+            items = sorted(list(dir_path.iterdir()),
+                           key=lambda x: (not x.is_dir(), x.name.lower()))
+
+            items = [i for i in items
+                     if i.name not in self.EXCLUDE_DIRS
+                     and i.name not in self.EXCLUDE_FILES
+                     and not i.name.startswith('.')]
 
             for i, item in enumerate(items):
                 connector = "└── " if i == len(items) - 1 else "├── "
-                tree_str += f"{prefix}{connector}{item.name}/\n" if item.is_dir() else f"{prefix}{connector}{item.name}\n"
-
+                tree_str += f"{prefix}{connector}{item.name}{'/' if item.is_dir() else ''}\n"
                 if item.is_dir():
                     extension = "    " if i == len(items) - 1 else "│   "
                     tree_str += self._generate_tree(item, prefix + extension)
@@ -93,103 +140,75 @@ class MCMProjectExporter:
             pass
         return tree_str
 
-    def _extract_summary(self, file_path: Path) -> str:
-        """提取代码头部的第一行简介"""
-        try:
-            with open(file_path, 'r', encoding='utf-8') as f:
-                content = f.read().strip()
-                if not content: return "-"
-                # 寻找 Python/C++ 风格的注释摘要
-                lines = content.split('\n')
-                for line in lines:
-                    clean = line.strip().replace('"""', '').replace('#', '').replace('/*', '').replace('*/', '').strip()
-                    if clean and len(clean) > 5:
-                        return clean[:80]  # 截断
-        except:
-            pass
-        return "-"
-
     def _scan_files(self):
-        """全盘扫描核心源文件"""
+        """全盘扫描"""
         self.scanned_files = []
         for root, dirs, files in os.walk(self.root):
-            # 原地修改 dirs 以便跳过排除目录
             dirs[:] = [d for d in dirs if d not in self.EXCLUDE_DIRS and not d.startswith('.')]
-
             for f in sorted(files):
-                f_path = Path(root) / f
-                if f_path.suffix in self.INCLUDE_EXTS and f not in self.EXCLUDE_FILES:
-                    self.scanned_files.append(f_path.relative_to(self.root))
+                if f in self.EXCLUDE_FILES: continue
+                path = Path(root) / f
+                if path.suffix in self.INCLUDE_EXTS:
+                    self.scanned_files.append(path.relative_to(self.root))
 
-    def export_markdown(self):
-        """导出为 Markdown (用于文档存档)"""
-        with open(self.md_path, 'w', encoding='utf-8') as f:
-            f.write(f"# Code Appendix: {self.root.name}\n\n")
-            f.write("## 1. Project Structure\n```text\n")
-            f.write(self._generate_tree(self.root))
-            f.write("```\n\n")
+    def _escape_tex(self, text: str) -> str:
+        """转义 LaTeX 特殊字符"""
+        replacements = {'_': r'\_', '%': r'\%', '$': r'\$', '#': r'\#', '&': r'\&'}
+        for k, v in replacements.items():
+            text = text.replace(k, v)
+        return text
 
-            f.write("## 2. Source Code Details\n")
-            for rel_path in self.scanned_files:
-                lang = "python" if rel_path.suffix == ".py" else "cpp"
-                f.write(f"### `{rel_path}`\n")
-                f.write(f"```{lang}\n")
-                f.write((self.root / rel_path).read_text(encoding='utf-8', errors='replace'))
-                f.write("\n```\n\n")
-
-    def export_latex(self):
-        """导出为 LaTeX (用于论文附件)"""
-
-        def escape_tex(text):
-            return text.replace('_', r'\_').replace('&', r'\&').replace('%', r'\%')
+    def run(self):
+        """执行导出 (匹配 main.py 的调用)"""
+        start = time.time()
+        self.logger.info("启动代码附录生成引擎...")
+        self._scan_files()
 
         with open(self.tex_path, 'w', encoding='utf-8') as f:
-            f.write("% --- Automated Code Appendix Generated for MCM 2026 ---\n")
+            # 1. 写入头文件
+            f.write("% Auto-generated by MCM Project Exporter\n")
             f.write(self.LATEX_PREAMBLE)
             f.write("\n\\section{Code Appendix}\n")
-            f.write(
-                "\\textit{This appendix contains the core implementation of the Bayesian Inference Engine and the Mechanism Forensics Pipeline. Data files and logs are omitted for brevity.}\n\n")
+            f.write("\\textit{This section creates the foundation of our Hybrid C++/Python Architecture.}\n\n")
 
-            # 1. 索引表
-            f.write("\\subsection{Module Index}\n")
-            f.write(
-                "\\begin{tabular}{ll}\n\\toprule\n\\textbf{File Path} & \\textbf{Functional Description} \\\\\n\\midrule\n")
-            for p in self.scanned_files:
-                summary = self._extract_summary(self.root / p)
-                f.write(f"\\texttt{{{escape_tex(str(p))}}} & {escape_tex(summary)} \\\\\n")
-            f.write("\\bottomrule\n\\end{tabular}\n\n")
-
-            # 2. 结构树
-            f.write("\\subsection{Directory Architecture}\n")
+            # 2. 写入项目结构树
+            f.write("\\subsection{Project Directory Structure}\n")
             f.write("\\begin{verbatim}\n")
+            f.write(f"{self.root.name}/\n")
             f.write(self._generate_tree(self.root))
             f.write("\\end{verbatim}\n\n")
 
-            # 3. 源代码
-            f.write("\\subsection{Implementation Details}\n")
-            for p in self.scanned_files:
-                lang = "Python" if p.suffix == ".py" else "C++"
-                if p.suffix == '.yaml': lang = "bash"  # listings 并不原生支持 yaml，用 bash 代替
-                f.write(f"\\subsubsection*{{File: \\texttt{{{escape_tex(str(p))}}}}}\n")
-                f.write(f"\\begin{{lstlisting}}[language={lang}]\n")
-                f.write((self.root / p).read_text(encoding='utf-8', errors='replace'))
-                f.write("\n\\end{lstlisting}\n\n")
+            # 3. 写入核心代码文件
+            f.write("\\subsection{Core Implementation Details}\n")
+            for rel_path in self.scanned_files:
+                lang = "Python"
+                if rel_path.suffix in ['.cpp', '.hpp', '.h']:
+                    lang = "C++"
+                elif rel_path.suffix == '.yaml':
+                    lang = "bash"
+                elif rel_path.suffix == '.cmake':
+                    lang = "bash"
 
-    def run(self):
-        start = time.time()
-        print(f"🚀 启动项目全栈导出引擎...")
-        self._scan_files()
-        print(f"  - 扫描到 {len(self.scanned_files)} 个核心源文件")
-        self.export_markdown()
-        self.export_latex()
-        print(f"✅ 导出完成！耗时: {time.time() - start:.2f}s")
-        print(f"  - Markdown 附录: {self.md_path}")
-        print(f"  - LaTeX 附录: {self.tex_path}")
+                title = self._escape_tex(str(rel_path))
+
+                try:
+                    content = (self.root / rel_path).read_text(encoding='utf-8')
+                    # 过滤空文件
+                    if len(content.strip()) < 10: continue
+
+                    f.write(f"\\subsubsection*{{File: \\texttt{{{title}}}}}\n")
+                    f.write(f"\\begin{{lstlisting}}[language={lang}]\n")
+                    f.write(content)
+                    f.write("\n\\end{lstlisting}\n\n")
+                except Exception as e:
+                    self.logger.warning(f"无法读取文件 {rel_path}: {e}")
+
+        self.logger.info(f"附录生成完毕: {self.tex_path} (耗时 {time.time() - start:.2f}s)")
 
 
-# --- 执行入口 ---
+# --- 单元测试 ---
 if __name__ == "__main__":
-    # 获取项目根目录 (假设脚本在 src/utils/)
+    logging.basicConfig(level=logging.INFO)
     root_dir = Path(__file__).resolve().parent.parent.parent
-    exporter = MCMProjectExporter(root_dir)
+    exporter = MCMProjectExporter(str(root_dir))
     exporter.run()
