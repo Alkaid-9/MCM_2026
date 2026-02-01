@@ -17,6 +17,7 @@ import math
 # 引入全局绘图风格配置 (Single Source of Truth for Aesthetics)
 from src.utils.plotting import DWTSPlotter
 
+
 class AttributionVisualizer:
     """
     归因可视化引擎：
@@ -53,12 +54,12 @@ class AttributionVisualizer:
 
         # 2. 绘制双向条形图
         # 左翼 (或上层)：观众偏好 (蓝色/冷色)
-        rects1 = ax.barh(y_pos + height/2, df['Fan_Beta'], height,
+        rects1 = ax.barh(y_pos + height / 2, df['Fan_Beta'], height,
                          label='Public Sentiment (Fans)',
                          color=self.plotter.colors['fan'], alpha=0.9)
 
         # 右翼 (或下层)：评委偏好 (橙色/暖色)
-        rects2 = ax.barh(y_pos - height/2, df['Judge_Beta'], height,
+        rects2 = ax.barh(y_pos - height / 2, df['Judge_Beta'], height,
                          label='Expert Quality (Judges)',
                          color=self.plotter.colors['judge'], alpha=0.9)
 
@@ -83,7 +84,8 @@ class AttributionVisualizer:
                         fontsize=9, color='#d62728', va='center', fontweight='bold')
 
         plt.title("The Evaluation Gap: Coefficient Contrast (LMM Fixed Effects)", fontsize=15, pad=15)
-        plt.xlabel("Standardized Impact (Beta Coefficient)\n← Negative Correlation | Positive Correlation →", fontsize=12)
+        plt.xlabel("Standardized Impact (Beta Coefficient)\n← Negative Correlation | Positive Correlation →",
+                   fontsize=12)
         plt.legend(loc='lower right', frameon=True, framealpha=0.9)
 
         self.plotter.save_figure("task3_lmm_butterfly.png")
@@ -143,7 +145,8 @@ class AttributionVisualizer:
         union = np.maximum(v_j_norm, v_f_norm).sum()
         iou = intersection / (union + 1e-9)
 
-        plt.title(f"Cognitive Divergence Radar\n(Preference Overlap Index: {iou:.2f})", y=1.08, fontsize=14, fontweight='bold')
+        plt.title(f"Cognitive Divergence Radar\n(Preference Overlap Index: {iou:.2f})", y=1.08, fontsize=14,
+                  fontweight='bold')
         plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
 
         self.plotter.save_figure("task3_dissonance_radar.png")
@@ -161,7 +164,7 @@ class AttributionVisualizer:
         colors_j = ['#e0e0e0', self.plotter.colors['judge']]
         colors_f = ['#e0e0e0', self.plotter.colors['fan']]
 
-        explode = (0, 0.05) # 突出显示舞伴效应
+        explode = (0, 0.05)  # 突出显示舞伴效应
 
         # Subplot 1: Judge Score Breakdown
         ax1.pie([1 - icc_judge, icc_judge],

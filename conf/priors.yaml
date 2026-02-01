@@ -1,91 +1,94 @@
 # ==============================================================================
 # MCM 2026 Problem C: Statistical Shape & Prior Definitions
 # Role: Defining the "Mental Model" of Fan Behavior (The Superstar Effect)
-# Function: Providing distributional hyperparameters for the Bayesian Prior Engine.
-# Version: 4.5.0-Bayesian-Final
+# Function: Providing hyperparameters for the Bayesian Prior Engine.
+# Academic Goal: Modeling latent social influence via Power-law distributions.
 # ==============================================================================
 
 metadata:
   framework: "Bayesian Inverse Optimization (BIO)"
-  author: "Quantitative Inference Engine v4.5"
-  description: "Hyperparameters for Zipfian and Dirichlet Manifolds."
+  author: "Quantitative Inference Engine v5.0"
+  description: "Hyperparameters for Zipfian and Dirichlet Manifolds on the Simplex."
 
 # ------------------------------------------------------------------------------
 # 1. 核心分布形态 (Latent Distribution Models)
-# 物理意义：模拟社交媒体的马太效应 (Matthew Effect)，即“流量向头部倾斜”。
+# 物理意义：模拟社交媒体的马太效应，即“流量向头部倾斜”。
 # ------------------------------------------------------------------------------
 vote_distribution:
   primary_model: "Zipf_Power_Law"  # 主模型：幂律分布
+  # 公式: P(r) ~ 1 / r^alpha
 
-  # [Zipf's Law] P(r) ~ 1 / r^alpha
   zipf_params:
-    # 标准衰减指数：1.2 是典型的社交网络关注度分布参数
-    # Sensitivity Check: 尝试 [0.8, 1.5]
+    # 标准衰减指数：1.2 是社交网络关注度的典型参数
+    # alpha 越大，第一名与最后一名的票数差距越呈指数级拉开
     alpha_standard: 1.2
 
-    # 全明星赛季 (S15) 的修正：流量更扁平，贫富差距小
-    alpha_allstar: 0.8
-
     # 截断保护：防止长尾端出现数学上的无穷小，导致 Log-Likelihood 爆炸
-    min_vote_share: 0.001  # 0.1% 的兜底票仓
+    min_vote_share: 0.001  # 0.1% 的最小保底票仓
 
-  # [备用模型] Log-Normal (用于 Task 7 的鲁棒性对比)
-  # 假设观众投票服从对数正态分布而非幂律分布，看结果是否显著变化
+  # [备用模型] 用于灵敏度分析对比
+  # 假设观众投票服从对数正态分布而非幂律分布，观察结论是否稳健
   log_normal_params:
     mu_base: 0.0
     sigma_base: 0.6  # 波动率：决定了“黑马”突破先验屏障的概率
 
 # ------------------------------------------------------------------------------
 # 2. Dirichlet 先验场参数 (The Bayesian Anchor)
-# 物理意义：控制先验分布在单纯形 (Simplex) 上的集中程度。
+# 物理意义：控制先验分布在概率单纯形 (Simplex) 上的“质量”或“浓度”。
 # ------------------------------------------------------------------------------
 dirichlet_field:
   # 基础浓度 (Concentration Base)
+  # 对应 rules.yaml 中的 prior_strength
   # alpha_vector = 1 + strength * prior_mean
-  # 这个参数必须与 rules.yaml 中的 inference.constraints.prior_strength 协同调整
-  # 建议保持默认，在 rules.yaml 中进行全局调控
   concentration_scaling: "Linear"
 
+  # 确定性对冲：在极高评委分差出现时，是否自动调弱先验强度
+  adaptive_prior_weakening: true
+
 # ------------------------------------------------------------------------------
-# 3. 赛季特异性覆盖 (Season-Specific Overrides)
-# 学术价值：体现对特定历史背景的精细化建模
+# 3. 灵敏度分析配置 (Task 7: Robustness Check Scenarios)
+# 学术价值：在论文中证明，无论先验假设如何，结论（如 Rank 优于 Percent）依然成立。
+# ------------------------------------------------------------------------------
+sensitivity_analysis:
+  # 场景 A: 弱先验 (The Skeptic)
+  # 假设：观众完全随波逐流，没有基于行业背景的固有偏好
+  scenario_weak:
+    prior_strength: 10.0
+    zipf_alpha: 0.5  # 几乎接近均匀分布
+
+  # 场景 B: 强先验 (The Believer)
+  # 假设：观众极度看重名气，无视当周舞蹈质量的微小波动
+  scenario_strong:
+    prior_strength: 150.0
+    zipf_alpha: 1.8  # 极端的赢家通吃
+
+# ------------------------------------------------------------------------------
+# 4. 赛季特异性覆盖 (Season-Specific Context)
+# 学术严谨性：体现对特定历史背景（如全明星赛）的精细化建模。
 # ------------------------------------------------------------------------------
 season_overrides:
   # Season 15: All-Stars
+  # 物理意义：全明星赛选手水平接近，流量分布比普通赛季更扁平（Flat-Tail）
   15:
     distribution_model: "Zipf_Power_Law"
-    alpha: 0.8  # 竞争白热化
+    alpha: 0.85
+    prior_strength: 30.0
 
   # Season 27: The Bobby Bones Anomaly
-  # 即使我们知道他赢了，先验依然假设他是长尾分布。
-  # 这样 Posterior 与 Prior 的巨大差异（KL 散度）才能证明“他赢全靠死忠粉”。
+  # 即使我们知道结果异常，反演时依然维持标准先验
+  # 这样产生的 Posterior 与 Prior 的巨大 KL 散度才是证据
   27:
     distribution_model: "Zipf_Power_Law"
-    alpha: 1.2  # 保持标准，让数据去“打脸”先验
+    alpha: 1.2
+    prior_strength: 50.0
 
 # ------------------------------------------------------------------------------
-# 4. 灵敏度分析配置 (Task 7: Sensitivity Analysis)
-# 目标：生成论文 Robustness Check 章节的素材
-# ------------------------------------------------------------------------------
-sensitivity_analysis:
-  # 场景 A: 弱先验 (Weak Prior)
-  # 假设：观众完全随波逐流，没有固有偏好
-  scenario_weak:
-    prior_strength: 10.0
-    zipf_alpha: 0.5
-
-  # 场景 B: 强先验 (Strong Prior)
-  # 假设：观众也是“外貌协会”或“唯名气论”，无视舞蹈质量
-  scenario_strong:
-    prior_strength: 200.0
-    zipf_alpha: 1.5
-
-# ------------------------------------------------------------------------------
-# 5. 异常检测阈值 (Anomaly Detection Thresholds)
+# 5. 异常监测阈值 (Anomaly Detection Thresholds)
 # ------------------------------------------------------------------------------
 thresholds:
-  # 熵值熔断线：如果 entropy > 0.95 * max_entropy，说明模型完全甚至不知道谁会赢
-  max_entropy_ratio: 0.95
+  # 熵值熔断线：如果 posterior_entropy > 0.9 * max_entropy
+  # 说明当周数据完全没有区分度，模型处于“猜硬币”状态
+  max_entropy_ratio: 0.90
 
-  # 排名置信度阈值：如果 95% CI 的区间宽度超过 5 个排名身位，视为“不可知”
-  rank_uncertainty_span: 5
+  # 排名位移警戒线：如果推断排名与实际排名偏差超过 N 位
+  rank_displacement_limit: 4

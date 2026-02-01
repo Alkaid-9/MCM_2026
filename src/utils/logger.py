@@ -1,7 +1,12 @@
-"""
-MCM 2026 Problem C: Industrial Dual-Logging System
-Role: Real-time monitoring of MCMC convergence and deep exception tracking.
-Standard: Industrial Robustness / Academic Traceability"""
+# ==============================================================================
+# src/utils/logger.py
+# Role: Industrial Dual-Logging System (The "Black Box" Recorder)
+# Function: Real-time monitoring of MCMC convergence and deep exception tracking.
+# Architecture:
+#   1. Console Stream -> High-level Progress (Alpha Signals)
+#   2. File Stream -> Deep Debugging & Stack Traces (Beta Noise)
+# Standard: Industrial Robustness / Academic Traceability.
+# ==============================================================================
 
 import logging
 import sys
@@ -9,79 +14,90 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-
-def setup_logger(name: str = "MCM_MASTER", log_file: str = None) -> logging.Logger:
+def _get_log_dir() -> Path:
     """
-    配置双路日志系统。
+    [路径自愈] 自动定位项目根目录下的 logs 文件夹。
+    逻辑：从 src/utils/logger.py 向上回溯两级 (src/utils -> src -> root)。
+    """
+    root_dir = Path(__file__).resolve().parent.parent.parent
+    log_dir = root_dir / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir
 
-    物理意义：
-    - Console Handler: 实时进度监控 (Alpha 信号跟踪)。
-    - File Handler: 全量实验取证 (Beta 噪音与异常回溯)。
-
-    :param name: 日志器唯一标识符
-    :param log_file: 日志文件路径。若为空，则根据 rules.yaml 中的配置生成。
+def setup_logger(name: str = "MCM_MASTER", log_filename: str = "system_runtime.log") -> logging.Logger:
+    """
+    配置通用双路日志系统。
+    
+    :param name: 日志器唯一标识符 (e.g., 'MCM_KERNEL')
+    :param log_filename: 日志文件名 (e.g., 'mcm_runtime.log')
+    :return: 配置好的 Logger 单例
     """
     logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG) # 捕获所有底层信息
 
-    # 1. 级别设定：捕获所有底层的 DEBUG 信息
-    logger.setLevel(logging.DEBUG)
-
-    # 2. 防止 Handler 重复挂载 (在多次初始化单例时常见)
+    # 1. 幂等性检查：防止 Handler 重复挂载 (常见于 Jupyter 或多次调用)
     if logger.handlers:
         return logger
 
-    # 3. 定义高信息熵的格式化器
-    # 包含：精确时间 | 级别 | 模块名 | [文件名:行号] | 具体信息
-    detailed_formatter = logging.Formatter(
-        fmt='%(asctime)s | %(levelname)-8s | %(name)s | [%(filename)s:%(lineno)d] | %(message)s',
+    # 2. 定义格式化器 (Formatter)
+    # [文件端] 全息格式：时间 | 级别 | 模块 | 源码位置 | 消息
+    file_fmt = logging.Formatter(
+        fmt='%(asctime)s | %(levelname)-8s | %(name)-15s | [%(filename)s:%(lineno)d] | %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
+    # [控制台] 极简格式：时间 | 消息 (类似 TQDM 风格)
+    console_fmt = logging.Formatter(
+        fmt='%(asctime)s | %(levelname)-8s | %(message)s',
+        datefmt='%H:%M:%S'
+    )
 
-    # --- A. Console Handler (屏幕流) ---
-    # 策略：只看 INFO 以上，避免被 MCMC 的千万次循环日志刷屏
+    # 3. 配置控制台流 (Screen Stream)
+    # 策略：只看 INFO，保持界面清爽
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
-    console_handler.setFormatter(detailed_formatter)
+    console_handler.setFormatter(console_fmt)
     logger.addHandler(console_handler)
 
-    # --- B. File Handler (文件流) ---
-    # 策略：记录所有 DEBUG 细节，作为论文“收敛性分析”的原始证据
-    if log_file:
-        log_path = Path(log_file)
-        # 自动建立日志目录，体现工程闭环
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-
-        # 使用 utf-8 编码，防止 Windows 环境下的中文字符崩溃
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+    # 4. 配置文件流 (Disk Stream)
+    # 策略：记录 DEBUG，作为灾难回溯的黑匣子
+    log_path = _get_log_dir() / log_filename
+    try:
+        # encoding='utf-8' 是必须的，否则 Windows 下中文日志会报错
+        file_handler = logging.FileHandler(log_path, encoding='utf-8', mode='a')
         file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(detailed_formatter)
+        file_handler.setFormatter(file_fmt)
         logger.addHandler(file_handler)
+    except PermissionError:
+        # 降级处理：如果文件被占用，仅输出警告，不阻断主流程
+        sys.stderr.write(f"[WARNING] 无法写入日志文件: {log_path}\n")
 
+    logger.debug(f"日志系统初始化完成。Log Path: {log_path}")
     return logger
 
-
-def get_logger(name: str = "MCM_MASTER"):
+def setup_audit_logger(name: str = "AUDIT_TRAIL", log_filename: str = "scientific_audit.log") -> logging.Logger:
     """
-    快速获取已配置的 logger 单例。
+    [科学审计专用] 配置纯文件日志系统。
+    
+    物理意义：
+    用于记录“不可变”的实验结果 (如 R-hat, ESS, p-values)。
+    该日志不输出到控制台，且格式纯净，便于后续脚本解析生成表格。
     """
-    return logging.getLogger(name)
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.INFO)
 
+    if logger.handlers:
+        return logger
 
-# --- 单元测试 ---
-if __name__ == "__main__":
-    # 模拟从 config 加载路径
-    test_log = "logs/test_run.log"
+    # 审计日志格式：纯文本，无冗余元数据
+    audit_fmt = logging.Formatter('%(asctime)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
-    logger = setup_logger("TEST_ENGINE", test_log)
-
-    logger.info("🚀 正在点火反演引擎...")
-    logger.debug("正在检查 C++ 内存指针地址: 0x7ffee4c88aac")
-
-    try:
-        # 模拟一个数值溢出错误
-        res = 1 / 0
-    except Exception as e:
-        # [核心亮点] 使用 exc_info=True 自动抓取并记录崩溃时的堆栈详情
-        logger.error("💥 检测到计算异常，正在回溯堆栈：", exc_info=True)
-
-    print(f"\n[PASS] 日志系统部署完毕，请检查: {test_log}")
+    log_path = _get_log_dir() / log_filename
+    file_handler = logging.FileHandler(log_path, encoding='utf-8', mode='a')
+    file_handler.setLevel(logging.INFO)
+    file_handler.setFormatter(audit_fmt)
+    
+    logger.addHandler(file_handler)
+    # 确保不传播给父 Logger (防止污染控制台)
+    logger.propagate = False
+    
+    return logger

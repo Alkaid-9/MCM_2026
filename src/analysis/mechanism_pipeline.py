@@ -3,7 +3,6 @@
 # Role: Mechanism Forensics Orchestrator (Task 2 Command Center)
 # Function: Integrating Survival Analysis, Sensitivity Check, and Counterfactuals.
 # Key Fix: Defensive data stitching to prevent KeyErrors in downstream analysis.
-# Standard: O-Prize Quality / Peer-Review Rigor.
 # ==============================================================================
 
 import pandas as pd

@@ -2,7 +2,7 @@
 # src/simulators/multiverse_engine.py
 # Role: Temporal Forensics & Multiverse Engine (v5.1 - Schema Fixed Edition)
 # Fix: Aligned output columns with SurvivalAnalyst requirements (week_avg_score, final_status).
-# Standard: O-Prize Quality / Counterfactual Rigor.
+# Standard: Industrial Grade / Counterfactual Simulation
 # ==============================================================================
 
 import pandas as pd

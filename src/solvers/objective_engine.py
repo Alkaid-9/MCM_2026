@@ -3,7 +3,7 @@
 # Role: Mechanism Scorecard (The Evaluation Metric Engine)
 # Function: Quantifying Fairness, Engagement, and Suspense for Task 4
 # Method: Spearman Correlation & Marginal Variance Analysis
-# Standard: O-Prize Quality / Multi-Objective Optimization
+# Standard: Industrial Grade / Pure Library Mode / Zero-Side-Effect
 # ==============================================================================
 
 import pandas as pd

@@ -1,13 +1,13 @@
 # ==============================================================================
-# MCM 2026 Problem C: "The Invisible Hand" - Global Governance Config
+# MCM 2026 Problem C: "Data With The Stars" - Global Governance Config
 # Role: Strategic Metadata & Parameter Orchestration
 # Standard: O-Prize / INFORMS Journal / High-Performance Computing
-# Version: 4.5.0-Bayesian-Final
+# Version: 5.0.0-Final (Production)
 # ==============================================================================
 
 project:
-  name: "DWTS_Latent_Inference_Project"
-  version: "4.5.0"
+  name: "DWTS_Latent_Inference_System"
+  version: "5.0.0"
   random_seed: 2026  # 固化随机种子，确保大规模仿真可复现 (Reproducibility)
   description: "Reconstructing latent fan preference via Bayesian Inverse Optimization."
 
@@ -15,16 +15,24 @@ project:
 # 1. 路径管理 (Industrial Data Lake Architecture)
 # ------------------------------------------------------------------------------
 paths:
-  # 分层数据流 (Bronze -> Silver -> Gold -> Platinum)
+  # --- 数据分层架构 ---
+  # Bronze: 原始 CSV (只读)
   bronze_raw: "data/bronze/2026_MCM_Problem_C_Data.csv"
+
+  # Silver: 清洗后的面板数据 (Panel Data)
   silver_panel: "data/silver/cleaned_long_format.csv"
+
+  # Gold: 因子库 (特征工程产物)
   gold_factors: "data/gold/factor_library.csv"
+
+  # Platinum: 贝叶斯反演结果 (后验分布均值与方差)
   platinum_results: "data/platinum/final_posterior_results.csv"
 
-  # 系统输出
+  # --- 系统输出 ---
+  logs: "logs/system_runtime.log"
+  audit_log: "logs/scientific_audit.log"
   figures_dir: "reports/figures/"
-  logs: "logs/system_audit.log"
-  mcmc_logs_dir: "logs/mcmc_chains/"
+  final_tables: "reports/final_design/"
 
 # ------------------------------------------------------------------------------
 # 2. 赛制机制定义 (Mechanism Governance)
@@ -36,77 +44,77 @@ mechanisms:
 
   # [S3-S27] 百分比结合法 (Cardinal Aggregation)
   # 物理意义：Percent 机制是 'Signal Amplifier'，放大了流量明星的长尾效应
+  # 也是 Bobby Bones (S27) 夺冠的罪魁祸首
   percent_based_seasons: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
   # 结构性突变点：Season 28 开始引入评委救济机制与回归 Rank 制
   transition_season: 28
 
-  # 评委救济机制 (Judges' Save)
+  # 评委救济机制 (Judges' Save / Circuit Breaker)
   judge_save:
     active_from: 28
     candidate_pool_size: 2  # 倒数两名由评委二选一
-    veto_logic: "Professional_Override"
+    veto_logic: "Professional_Override" # 评委倾向于救技术分高的人
 
 # ------------------------------------------------------------------------------
 # 3. 贝叶斯推理超参数 (Task 1: Bayesian Inference Engine)
 # [物理对齐]: 这里的字段名与 C++ SamplerConfig 结构体严格一致
 # ------------------------------------------------------------------------------
 inference:
-  # MCMC 采样策略 (对齐你 23 核 CPU 的咆哮)
+  # MCMC 采样策略 (对齐 23 核 CPU 的并行算力)
   mcmc_strategy:
     n_chains: 23
-    samples_per_chain: 100000 # 建议先设 10000 测试，正式跑用 100000
-    burn_in_ratio: 0.5        # 预热期比例，丢弃前 50% 的样本以确保收敛
+    samples_per_chain: 100000 # 生产环境建议 100,000+
+    burn_in_ratio: 0.5        # 预热期比例 (Discard first 50%)
     thinning: 20              # 稀疏采样，降低样本自相关性 (Auto-correlation)
     jump_size: 0.05           # 初始步长，后续由 Dual-Averaging 自动调整
-    return_traces: true       # 开启轨迹回传，用于画 Trace Plot 以证明收敛
+    return_traces: true       # 开启轨迹回传，用于画 Trace Plot 证明收敛
 
-  # 似然函数刚度 (Likelihood Stiffness) & 先验强度
+  # 似然函数刚度 (Likelihood Stiffness) & 约束强度
   constraints:
     # Soft-Rank 温度：0.05 是精度与梯度的平衡点
+    # math: Rank_i ~ sum(Sigmoid((v_j - v_i)/tau))
     rank_tau: 0.05
 
     # 淘汰违规惩罚 (Hard Constraint Penalty)
+    # 物理意义：如果模型预测被淘汰的人居然存活了，给予极大的势能惩罚
     rank_violation_penalty: 1200.0
 
     # 危险区信号权重 (Soft Constraint Weight)
+    # 物理意义：如果历史记录显示 "Bottom Two"，则反演的票数应接近底部
     bottom_two_penalty_weight: 150.0
 
     # 贝叶斯先验置信度 (Prior Strength)
-    # 物理意义：相当于“虚拟样本量”。强度越高，后验越贴近明星行业背景；强度越低，越尊重当周比赛表现。
+    # 物理意义：相当于“虚拟样本量”。强度越高，后验越贴近明星行业背景（先验）；强度越低，越尊重当周比赛证据（似然）。
     # Sensitivity Analysis 的核心参数：尝试 [10.0, 50.0, 150.0]
     prior_strength: 50.0
 
-  # 赛制特例配置
-  priors:
-    alpha_standard: 1.2  # 标准齐夫定律指数
-    alpha_allstar: 0.8   # 全明星赛季流量分布更扁平
-
 # ------------------------------------------------------------------------------
-# 4. 启发式先验因子权重 (Task 1 & 3: The Gravity Model)
-# [学术核心]: 定义人气引力 G = w1*Industry + w2*Partner + w3*Momentum
+# 4. 启发式先验因子权重 (Gravity Model for Priors)
+# [学术核心]: 定义人气引力 Gravity = w1*Industry + w2*Partner + w3*Momentum
 # ------------------------------------------------------------------------------
 factor_anchors:
   # 动态因子权重
-  partner_alpha_weight: 0.45       # 舞伴的“带粉能力”贡献
-  technical_momentum_weight: 0.25  # “逆袭剧本”加成
+  partner_alpha_weight: 0.45       # 舞伴的“带粉能力”贡献 (The Halo Effect)
+  technical_momentum_weight: 0.25  # “逆袭剧本”加成 (Underdog Story)
 
   # 行业原生流量偏置 (Static Industry Bias)
-  # 物理直觉：基于社会学观察的先验概率增益。这是你论文“商业洞察”的体现。
+  # 物理直觉：基于社会学观察的先验概率增益。
   industry_base_bias:
-    "Reality Star": 0.20           # 流量核心
-    "Social Media": 0.18
-    "Music Industry": 0.15         # 乡村歌手(Bobby Bones)天生自带强粘性票仓
-    "Athlete": 0.12                # 运动员有国民度但粘性中等
-    "Screen Industry": 0.08        # 演员主要看舞蹈表现
+    "Reality Star": 0.20    # 流量核心，死忠粉多
+    "Social Media": 0.18    # 网红，转化率高
+    "Music Industry": 0.15  # 乡村歌手(如 Bobby Bones)自带票仓
+    "Athlete": 0.12         # 运动员有国民度但粘性中等
+    "Screen Industry": 0.08 # 演员主要看作品
     "Model": 0.05
-    "Politician": -0.05            # 政治人物通常面临民意两极分化
+    "Politician": -0.05     # 政治人物通常面临民意两极分化
     "Other": 0.0
 
 # ------------------------------------------------------------------------------
 # 5. ETL 基础配置与特征工厂
 # ------------------------------------------------------------------------------
 etl:
+  # 正则表达式：解析宽表中的评分列
   regex: "week(\\d+)_judge(\\d+)_score"
   score_range: [1.0, 10.0]
 
@@ -121,9 +129,12 @@ features:
     "Rapper": "Music Industry"
     "Reality TV Star": "Reality Star"
     "TV Personality": "Reality Star"
+    "YouTuber": "Social Media"
+    "Instagram Star": "Social Media"
     "Actor": "Screen Industry"
     "Actress": "Screen Industry"
 
+  # 年龄分段 (用于 SHAP 非线性分析)
   age_segmentation:
     bins: [0, 25, 40, 60, 100]
     labels: ["GenZ", "Millennial", "GenX", "Boomer"]
@@ -135,8 +146,8 @@ task4_mechanism_design:
   # 动态权重 w(t) = Sigmoid(k * (t - t0))
   # 物理意义：赛季初期重收视率(人气)，赛季末期重专业性(技术)
   dynamic_weighting:
-    sigmoid_k: 0.5
-    sigmoid_t0: 0.6  # 在赛程过半后权重开始向评委倾斜
+    sigmoid_k: 10.0    # 切换斜率：越大切换越快
+    sigmoid_t0: 0.6    # 切换中点：在赛程 60% 处达到权重平衡 (Power Handover)
 
   # 熔断器阈值 (Circuit Breaker)
   circuit_breaker:

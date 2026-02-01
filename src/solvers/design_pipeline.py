@@ -3,7 +3,7 @@
 # Role: Mechanism Design Orchestrator (The Final Assembly Line)
 # Function: Generating the "Final Verdict" comparing Rank, Percent, and DAW mechanisms.
 # Refactor: Enabled Game Theory Audit & Suspense Calculation (Cliffhanger Index)
-# Standard: O-Prize Quality / Decision Support System.
+# Standard: Industrial Grade / Multi-Objective Optimization
 # ==============================================================================
 
 import pandas as pd

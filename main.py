@@ -44,7 +44,6 @@ def main():
 
     logger.info("=" * 80)
     logger.info("   MCM 2026 PROBLEM C: FULL SYSTEM ACTIVATED   ")
-    logger.info("   Target: O-Prize / Beijing 985 Math Dept Standard   ")
     logger.info("   Kernel: C++17 Accelerated Bayesian Inference Engine   ")
     logger.info("=" * 80)
 

@@ -3,7 +3,7 @@
 # Role: ETL Stage Orchestrator (The Industrial Assembly Line)
 # Function: Sequential execution of data loading, parsing, transformation,
 #           forensics, and factor building.
-# Standard: O-Prize Quality / Production-Grade Robustness.
+# Standard: Industrial Scalability / Academic Rigor (SNR Analytics).
 # ==============================================================================
 
 import logging

@@ -5,9 +5,9 @@
         "log_rank_p_value": 0.205409277566445
     },
     "sensitivity_metrics": {
-        "flip_rate_rank_at_0.1": 0.03148026315789473,
-        "flip_rate_percent_at_0.1": 0.023361842105263157,
-        "robustness_advantage": -0.3475077294223669
+        "flip_rate_rank_at_0.1": 0.030973684210526316,
+        "flip_rate_percent_at_0.1": 0.023078947368421053,
+        "robustness_advantage": -0.3420752417344821
     },
     "counterfactual_cases": {
         "Bobby_Bones_S27": {
@@ -16,5 +16,5 @@
             "verdict": "Robust_Popularity (\u7edd\u5bf9\u6c11\u610f\u7edf\u6cbb)"
         }
     },
-    "overall_verdict": "Our audit proves the Rank System provides a -34.8% stability advantage against fan noise. However, survival benefits remain marginally insignificant at current sample sizes."
+    "overall_verdict": "Our audit proves the Rank System provides a -34.2% stability advantage against fan noise. However, survival benefits remain marginally insignificant at current sample sizes."
 }

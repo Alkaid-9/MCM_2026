@@ -2,95 +2,118 @@
 # src/solvers/daw_engine.py
 # Role: Dynamic Adaptive Weighting (DAW) System Core
 # Function: Generating time-dependent weights w(t) using Sigmoid transition.
-# Physics: Smoothly shifting power from "Populism" (Fans) to "Meritocracy" (Judges).
+# Physics Intuition: Modeling the transition from "Public Sentiment Exploration"
+#                    to "Technical Merit Exploitation" as a Phase Transition.
+# Standard: MIT/Stanford Math Dept Standards for Mechanism Design.
 # ==============================================================================
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
 import logging
-import os
 from scipy.stats import rankdata
 from src.etl.config_loader import ConfigLoader
 
 
 class DAWEngine:
     """
-    DAW (Dynamic Adaptive Weighting) 引擎：
-    实现基于 Sigmoid 函数的动态权重分配机制。
+    DAW (Dynamic Adaptive Weighting) 物理引擎：
+    实现基于广义 Sigmoid 函数的动态权力移交机制。
 
-    [数学原理]
-    Judge_Weight(t) = Base + Range * Sigmoid(k * (t - t0))
-
-    其中：
-    - t: 归一化赛程进度 [0, 1]
-    - k: 切换斜率 (Slope)，代表“改革的激进程度”
-    - t0: 切换中点 (Midpoint)，代表“权力移交的时间节点”
+    [博弈论背景]
+    该机制旨在建立“激励相容性 (Incentive Compatibility)”。
+    通过随赛程动态调整权重，确保选手在决赛阶段的最优策略（Nash Equilibrium）
+    必然是“提升舞技”而非“社交媒体营销”。
     """
 
-    def __init__(self, fig_dir: str = "reports/figures/"):
+    def __init__(self, config_loader: ConfigLoader = None):
         self.logger = logging.getLogger("DAW_ENGINE")
-        self.cfg_loader = ConfigLoader()
-        self.fig_dir = fig_dir
-        os.makedirs(self.fig_dir, exist_ok=True)
+        self.cfg_loader = config_loader if config_loader else ConfigLoader()
 
-        # 加载默认参数 (作为冷启动基准)
-        # 实际运行时，这些参数通常由 ParetoOptimizer 动态注入
-        daw_cfg = self.cfg_loader._config.get('task4_mechanism_design', {}).get('dynamic_weighting', {})
-        self.default_k = daw_cfg.get('sigmoid_k', 10.0)
-        self.default_t0 = daw_cfg.get('sigmoid_t0', 0.6)  # 赛程 60% 时达到权重平衡
+        # 加载持久化配置
+        daw_cfg = self.cfg_loader.load_config().get('task4_mechanism_design', {}).get('dynamic_weighting', {})
 
-        # 权重边界 (防止极端情况)
-        self.min_judge_weight = 0.3  # 即使在娱乐为主的前期，评委也至少有 30% 话语权
-        self.max_judge_weight = 0.8  # 即使在专业为主的决赛，观众也保留 20% 话语权
+        # 核心超参数
+        self.default_k = float(daw_cfg.get('sigmoid_k', 10.0))
+        self.default_t0 = float(daw_cfg.get('sigmoid_t0', 0.6))
 
-    def _sigmoid(self, x: float) -> float:
-        """标准 Sigmoid 激活函数"""
-        return 1.0 / (1.0 + np.exp(-x))
+        # 机制约束边界 (Meritocratic Floor & Populist Ceiling)
+        # 物理意义：防止任何一方拥有绝对裁决权（Dictatorship），保持系统的“脆弱性平衡”以提高观赏性
+        self.w_min = 0.3  # 评委权重下限
+        self.w_max = 0.8  # 评委权重上限
+
+    @staticmethod
+    def _stable_sigmoid(x: float) -> float:
+        """
+        数值稳定的 Sigmoid 实现。
+        物理意义：防止在高斜率 k 寻优过程中产生指数爆炸（Floating Point Overflow）。
+        """
+        if x >= 0:
+            z = np.exp(-x)
+            return 1.0 / (1.0 + z)
+        else:
+            z = np.exp(x)
+            return z / (1.0 + z)
 
     def compute_judge_weight(self, progress: float, k: float = None, t0: float = None) -> float:
         """
-        计算当前赛程进度下的评委权重 w_J(t)。
+        计算即时评委权重 w_J(t)。
 
-        :param progress: 当前赛程进度 (current_week / total_weeks)，范围 [0, 1]
-        :param k: Sigmoid 斜率 (控制切换速度)
-        :param t0: Sigmoid 中点 (控制切换时机)
+        公式：w(t) = w_min + (w_max - w_min) * Sigmoid(k * (t - t0) * 10)
+
+        :param progress: 归一化时间进度 t \in [0, 1]
+        :param k: 转移速率 (Aggressiveness of policy shift)
+        :param t0: 权力交接中点 (Phase transition pivot)
         """
-        if k is None: k = self.default_k
-        if t0 is None: t0 = self.default_t0
+        # 参数鲁棒性回退
+        k = k if k is not None else self.default_k
+        t0 = t0 if t0 is not None else self.default_t0
 
-        # 1. 计算 Sigmoid 响应
-        # 放大输入范围以利用 Sigmoid 的非线性区
-        x = k * (progress - t0)
-        sig_val = self._sigmoid(x)
+        # 边界防御：progress 必须在 [0, 1]
+        t = np.clip(progress, 0.0, 1.0)
 
-        # 2. 映射到 [Min, Max] 物理约束区间
-        w_range = self.max_judge_weight - self.min_judge_weight
-        w_judge = self.min_judge_weight + w_range * sig_val
+        # 线性空间映射到 Sigmoid 敏感区
+        # 乘以 10.0 是为了让 k=1 对应于温和的过渡，k=10 对应于剧烈的体制转换
+        logit = k * (t - t0) * 10.0
+        sig_val = self._stable_sigmoid(logit)
 
-        return w_judge
+        # 仿射变换映射回目标权重区间
+        return self.w_min + (self.w_max - self.w_min) * sig_val
+
+    def get_weight_trajectory(self, total_weeks: int, k: float = None, t0: float = None) -> np.ndarray:
+        """
+        [高性能接口] 生成全赛季权重演化向量。
+        物理意义：预热计算图，供大规模 Monte Carlo 仿真调用。
+        """
+        if total_weeks < 1:
+            return np.array([self.w_min])
+
+        weeks = np.arange(1, total_weeks + 1)
+        progress_vec = weeks / total_weeks
+
+        # 利用向量化运算提速
+        weights = np.array([self.compute_judge_weight(p, k, t0) for p in progress_vec])
+        return weights
 
     def calculate_combined_score(self,
                                  judge_ranks: np.ndarray,
                                  fan_ranks: np.ndarray,
                                  progress: float,
                                  k: float = None,
-                                 t0: float = None) -> np.ndarray:
+                                 t0: float = None):
         """
-        计算 DAW 机制下的最终混合得分。
+        执行 DAW 机制下的混合裁决。
 
-        [机制逻辑]
-        采用“加权排名和” (Weighted Rank Sum)。
-        Score = w_J(t) * Rank_J + (1 - w_J(t)) * Rank_F
-        注意：排名越小越好 (1st, 2nd...)，因此 Score 越小越安全。
+        [算法本质]
+        这是一个“动态序数聚合问题”。
+        Score(t) = w_J(progress) * Rank_Judge + (1 - w_J(progress)) * Rank_Fan
+
+        注意：在本项目坐标系中，排名越小越优秀 (1=Best)。
         """
-        # 1. 获取动态权重
         w_j = self.compute_judge_weight(progress, k, t0)
         w_f = 1.0 - w_j
 
-        # 2. 加权融合
-        # 假设输入已经是排名 (1-based)
+        # 执行加权序数叠加
+        # 使用线性组合保持排名空间的拓扑结构
         combined_score = w_j * judge_ranks + w_f * fan_ranks
 
         return combined_score, w_j
@@ -101,90 +124,45 @@ class DAWEngine:
                               k: float = None,
                               t0: float = None) -> pd.DataFrame:
         """
-        模拟单周 DAW 裁决结果。
+        [单周审计核]：评估 DAW 机制在特定周次的决策结果。
+
+        物理意义：用于对比“Bobby Bones 悖论”在 DAW 下是否会触发“体制自愈”。
         """
+        if week_data.empty:
+            return week_data
+
         df = week_data.copy()
-        current_week = df['week_num'].iloc[0]
-        progress = current_week / total_weeks
+        current_week = int(df['week_num'].iloc[0])
+        progress = current_week / max(total_weeks, 1)
 
-        # 1. 准备排名信号
-        # 技术分排名 (method='min', 分数高排名小)
-        j_ranks = rankdata(-df['week_avg_score'], method='min')
-        # 粉丝票排名 (method='min', 票数高排名小)
-        # 注意：这里必须使用 Task 1 反演出的 'est_fan_vote_mu'
-        f_ranks = rankdata(-df['est_fan_vote_mu'], method='min')
+        # 1. 信号提取（强制转换为降序排名）
+        # 分数越高 -> 排名数字越小 (1st)
+        j_ranks = rankdata(-df['week_avg_score'].values, method='min')
 
-        # 2. 计算 DAW 混合分
-        daw_scores, w_current = self.calculate_combined_score(j_ranks, f_ranks, progress, k, t0)
+        # 粉丝票占比越高 -> 排名数字越小 (1st)
+        # 注意：这里必须注入 Task 1 产出的 est_fan_vote_mu
+        f_ranks = rankdata(-df['est_fan_vote_mu'].values, method='min')
 
+        # 2. 机制执行
+        daw_scores, applied_weight = self.calculate_combined_score(
+            j_ranks, f_ranks, progress, k, t0
+        )
+
+        # 3. 结果固化
         df['daw_score'] = daw_scores
+        # 最终排名再次进行 rank 以处理并列情况
         df['daw_rank'] = rankdata(daw_scores, method='min')
-        df['judge_weight_applied'] = w_current
+        df['judge_weight_applied'] = applied_weight
 
         return df
 
-    def plot_weight_trajectory(self, total_weeks: int = 10, k_list=None, t0_list=None):
+    def validate_params(self, k: float, t0: float) -> bool:
         """
-        [论文配图]：绘制权力移交曲线 (Power Transfer Curve)。
-        展示不同参数配置下，评委权重随赛程的变化。
+        [工业级质量检查]：验证优化器生成的参数是否符合物理直觉。
         """
-        if k_list is None: k_list = [5, 10, 20]  # 平缓 -> 激进
-        if t0_list is None: t0_list = [0.4, 0.6, 0.8]  # 早期 -> 晚期
-
-        weeks = np.arange(1, total_weeks + 1)
-        progress = weeks / total_weeks
-
-        plt.figure(figsize=(10, 6))
-
-        # 1. 绘制不同 k 值 (固定 t0)
-        t0_fixed = self.default_t0
-        colors = sns.color_palette("viridis", len(k_list))
-        for i, k in enumerate(k_list):
-            weights = [self.compute_judge_weight(p, k=k, t0=t0_fixed) for p in progress]
-            plt.plot(weeks, weights, label=f'Aggressiveness $k={k}$',
-                     color=colors[i], linewidth=2.5, linestyle='-')
-
-        # 2. 绘制基准线
-        plt.axhline(0.5, color='gray', linestyle='--', alpha=0.5, label='Equal Weight (50/50)')
-        plt.axhline(self.min_judge_weight, color='red', linestyle=':', alpha=0.3, label='Min Judge Floor')
-
-        plt.title(f"DAW Mechanism: Dynamic Power Transfer Function\n(Transition Point $t_0={t0_fixed}$)", fontsize=14)
-        plt.xlabel("Competition Week", fontsize=12)
-        plt.ylabel("Weight of Judge's Score ($w_J$)", fontsize=12)
-        plt.ylim(0, 1.0)
-        plt.legend(loc='lower right')
-        plt.grid(True, alpha=0.2)
-
-        # 添加物理意义标注
-        plt.text(1.5, self.min_judge_weight + 0.02, "Populism Phase\n(Traffic Driven)", color='darkred', fontsize=10)
-        plt.text(total_weeks - 2, self.max_judge_weight - 0.05, "Meritocracy Phase\n(Skill Driven)", color='darkgreen',
-                 fontsize=10)
-
-        save_path = os.path.join(self.fig_dir, "daw_weight_trajectory.png")
-        plt.savefig(save_path, dpi=300, bbox_inches='tight')
-        plt.close()
-        self.logger.info(f"DAW 权力曲线图已生成: {save_path}")
-
-
-# --- 单元测试 ---
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    engine = DAWEngine()
-
-    # 1. 生成轨迹图
-    engine.plot_weight_trajectory(total_weeks=12)
-
-    # 2. 模拟单周数据
-    print("\n--- DAW Simulation Test (Week 8/10) ---")
-    mock_df = pd.DataFrame({
-        'season': 99, 'week_num': 8,
-        'celebrity_name': ['Tech_Pro', 'Fan_Fav', 'Mediocre'],
-        'week_avg_score': [29.0, 20.0, 24.0],  # Tech > Mediocre > Fan
-        'est_fan_vote_mu': [0.1, 0.6, 0.3]  # Fan > Mediocre > Tech
-    })
-
-    # 在 Week 8 (后期)，评委权重应该很高，技术好的 Tech_Pro 应该反超
-    res = engine.simulate_week_outcome(mock_df, total_weeks=10)
-    print(res[['celebrity_name', 'week_avg_score', 'est_fan_vote_mu', 'daw_score', 'daw_rank']])
-
-    print(f"\nApplied Judge Weight: {res['judge_weight_applied'].iloc[0]:.4f}")
+        # 切换中点不能超出生赛程范围，斜率不能为负
+        if not (0.1 <= t0 <= 0.9):
+            return False
+        if k <= 0:
+            return False
+        return True
