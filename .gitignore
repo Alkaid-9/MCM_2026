@@ -3,7 +3,7 @@
 # Standard: Industrial Quant / Silicon Valley HPC Engineering
 # ==============================================================================
 
-# --- [1. Python 核心隔离] ---
+# --- [1. Python Core & Environment] ---
 __pycache__/
 *.py[cod]
 *$py.class
@@ -15,71 +15,88 @@ venv/
 .env
 .venv
 pip-log.txt
-pip-delete-this-directory.txt
 .ipynb_checkpoints/
 .pytest_cache/
-# Numba JIT 缓存
+# Numba JIT Cache
 __numba_cache__/
 
-# --- [2. C++ & Build System (CMake) 隔离] ---
-# 所有的编译产物必须在 build/ 文件夹内，通过 gitignore 彻底封杀
+# --- [2. C++ & Build Artifacts (High Risk)] ---
+# 严防编译中间产物污染代码库
 build/
+cpp_kernel/build/
 bin/
+lib/
+obj/
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+# Dynamic Libraries
+*.so
+*.dylib
+*.dll
+# Static Libraries
+*.a
+*.lib
+*.lai
+*.la
+# CMake Artifacts
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
 *.cmake
-# 忽略编译出的静态库与动态库 (通过 Wrapper 加载)
-*.a
-*.lib
-*.dll
-*.dylib
-*.exp
-*.pdb
-*.ilk
+install_manifest.txt
 
-# --- [3. 数据湖分层保护 (Data Lake Architecture)] ---
-# 物理意义：Git 只管代码，不管数据。
-# 我们只保留文件夹结构，通过在子文件夹内放一个 .gitkeep 来维持
+# --- [3. Data Lake Architecture (Schema Preservation)] ---
+# 物理意义：Git 只管代码逻辑，不管数据资产
+# 策略：忽略所有数据文件，但保留目录结构
 data/bronze/*
 data/silver/*
 data/gold/*
 data/platinum/*
-# 允许追踪数据定义文件或极小的样本文件
+# 允许追踪占位符，确保协作者拉取代码后目录结构完整
 !data/**/.gitkeep
 !data/metadata.json
 
-# --- [4. 日志与取证数据] ---
-# 记录了 MCMC 收敛过程的日志通常很大
-logs/*.log
-logs/mcmc_chains/
+# --- [4. Logs & Forensics] ---
+# MCMC 采样日志通常巨大，且含运行环境信息，不宜提交
+logs/
+*.log
 
-# --- [5. IDE & 系统噪音] ---
+# --- [5. Reports & Generated Assets] ---
+# 忽略自动生成的图表和临时 TeX 表格
+reports/figures/*
+reports/mechanism_audit/*.json
+reports/mechanism_audit/*.tex
+reports/final_design/*.json
+reports/final_design/*.tex
+# 保留目录结构
+!reports/**/.gitkeep
+
+# --- [6. Auto-Generated Documentation] ---
+# 由 exporter.py 生成的附录，每次运行都会变，无需版本控制
+Code_Appendix.md
+appendix_code.tex
+
+# --- [7. IDE & System Noise] ---
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 *.swp
 *.bak
+*.tmp
 
-# --- [6. 论文产物与临时资源] ---
-# 允许追踪主论文 .tex，但排除编译生成的临时垃圾文件
+# --- [8. LaTeX Build Junk] ---
+# 编译主论文时产生的临时文件
 *.aux
 *.fdb_latexmk
 *.fls
-*.gz
-*.log
+*.synctex.gz
 *.toc
 *.out
-# 排除自动生成的代码附录 (由 exporter.py 实时生成)
-Code_Appendix.md
-appendix_code.tex
-reports/figures/*
-!reports/figures/.gitkeep
-
-# ==============================================================================
-# 导师叮嘱：
-# 如果你想让 Git 追踪某些文件夹的结构但不追踪内容，
-# 请在 data/bronze/ 等目录下创建一个名为 .gitkeep 的空文件。
-# ==============================================================================
+*.xdv
+*.bbl
+*.blg
