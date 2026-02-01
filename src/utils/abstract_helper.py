@@ -1,6 +1,5 @@
 # ==============================================================================
 # src/utils/abstract_helper.py
-# Role: Research Insight Harvester (The "O-Prize" Punchline Generator)
 # Function: Harvesting key metrics across the pipeline for the Summary Sheet.
 # Key Logic: Automatically converting raw stats into persuasive academic narrative.
 # Standard: Quantified Rigor / Defensive I/O / Publication-Ready Text.
@@ -142,7 +141,6 @@ class AbstractHelper:
         将数字自动填入预设的学术句式中，直接输出到控制台供 Copy-Paste。
         """
         print("\n" + "=" * 80)
-        print(" [O-PRIZE PUNCHLINES] 论文核心论据库 (Ready for Abstract & Memo) ")
         print("=" * 80 + "\n")
 
         # 1. Inference Argument

@@ -3,7 +3,6 @@
 # Role: Causal Attribution Visualization Engine
 # Function: Visualizing the "Clash of Criteria" between Judges and Fans.
 # Key Outputs: Coefficient Butterfly Plots, Dissonance Radars, ICC Variance Pies.
-# Standard: High-DPI, Publication-Ready, Narrative-Driven (The "O-Prize" Look).
 # ==============================================================================
 
 import pandas as pd

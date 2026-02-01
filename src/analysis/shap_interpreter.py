@@ -102,131 +102,178 @@ class ShapInterpreter:
         return X
 
     def run_dual_shap_analysis(self):
-        self.logger.info(">>> 启动双路 SHAP 非线性归因 (XGBoost 3.x 兼容模式)...")
+        """
+        核心逻辑：计算评委路径和粉丝路径的 SHAP 值。
+        [深度重构]: 采用置换解释器 (Permutation Explainer) 方案。
+        物理意义：通过“黑盒扰动”绕过 XGBoost 3.x 序列化 Bug，确保学术归因的绝对鲁棒性。
+        """
+        self.logger.info(">>> 启动双路 SHAP 非线性归因 (Permutation-Stable Mode)...")
 
         try:
+            # 1. 因子矩阵预处理
             X_df = self._prepare_feature_matrix()
-            if X_df.empty or len(X_df) < 30: return None, None, None
+            if X_df.empty or len(X_df) < 30:
+                self.logger.warning("有效样本不足，跳过归因环节。")
+                return None, None, None
 
-            # 强制类型压实：float32 是 XGBoost 3.x 的最优计算位宽
-            X_np = X_df.values.astype(np.float32)
-            y_j = self._robust_clean(self.df['week_avg_score']).fillna(7.5).values.astype(np.float32)
+            # 强制压实数据位宽，对齐 XGBoost 3.x 内存布局
+            X_clean = X_df.astype(np.float32)
+
+            # 2. 目标变量净化 (防污染逻辑)
+            # y_j: 评委分; y_f: 估计得票率
+            y_j = self._robust_clean(self.df['week_avg_score']).fillna(7.0).values.astype(np.float32)
             y_f = self._robust_clean(self.df['est_fan_vote_mu']).fillna(0.1).values.astype(np.float32)
 
-            # 训练参数：针对 XGBoost 3.x 优化
+            # 3. 训练代理模型 (Proxy Model)
+            # 显式指定 base_score 为纯浮点数，避开 XGBoost 内部的 JSON 数组 Bug
             params = {
-                'n_estimators': 100,
+                'n_estimators': 80,
                 'max_depth': 4,
                 'learning_rate': 0.1,
-                'tree_method': 'hist',
+                'tree_method': 'exact',  # 3.x 版本 exact 更稳定
                 'base_score': 0.5,
-                'n_jobs': 1  # 避免多进程嵌套死锁
+                'n_jobs': 1  # 避免多进程嵌套导致的信号量死锁
             }
 
-            self.logger.info("训练代理回归树集群...")
-            model_j = xgb.XGBRegressor(**params).fit(X_df, y_j)
-            model_f = xgb.XGBRegressor(**params).fit(X_df, y_f)
+            self.logger.info("正在拟合非线性代理树...")
+            model_j = xgb.XGBRegressor(**params).fit(X_clean, y_j)
+            model_f = xgb.XGBRegressor(**params).fit(X_clean, y_f)
 
             import shap
 
-            def safe_extract_shap(model, data):
+            # 4. [架构师核心补丁] 建立健壮的解释器工厂
+            def get_robust_explanation(model, data):
                 """
-                [架构师补丁]:
-                XGBoost 3.x 的 base_score 属性被封装成了 array。
-                通过手动修改模型对象属性，强制纠正 SHAP 的解析错误。
+                [架构师级补丁]: 解决 SHAP 0.49+ 在高维特征下的 max_evals 校验崩溃问题。
+                物理意义：利用 Monte Carlo 置换抽样计算特征的边际贡献（Shapley Values）。
                 """
-                # 暴力注入：将内部可能存在的 [0.5] 强制转回 0.5
                 try:
-                    # 尝试捕获并纠正元数据
-                    explainer = shap.Explainer(model)
-                    # 针对 ExactExplainer 或 TreeExplainer 的混合检查
-                    return explainer(data)
+                    # 1. 强制数据流脱敏：将 DataFrame 降维为纯 Numpy 矩阵，位宽压缩至 float32
+                    X_array = data.values.astype(np.float32)
+
+                    # 2. 建立独立掩码场 (Masker)
+                    # max_samples=100 是精度与速度的“帕累托最优”点，足以代表数据背景分布
+                    masker = shap.maskers.Independent(X_array, max_samples=100)
+
+                    # 3. 实例化置换解释器 (Permutation Explainer)
+                    # 注入 model.predict，将 XGBoost 视为一个标准的可调用黑盒
+                    explainer = shap.Explainer(model.predict, masker)
+
+                    # 4. 执行边际贡献推断
+                    # [核心修复]: 将 max_evals 设为 500。
+                    # 理由：SHAP 的 ExactExplainer 需要至少 2^k 次运算。
+                    # 你的特征维数 k 约在 8-10 之间，500 次评价足以确保算法闭环。
+                    shap_values = explainer(
+                        X_array,
+                        max_evals=500,
+                        batch_size=50  # 向量化分批处理，提速显著
+                    )
+
+                    # 5. 元数据还原：将 SHAP 内部生成的 values 重新挂载特征名称，适配后续绘图
+                    # 这能确保你在调用 self.plotter 时，坐标轴上的名称是人类可读的
+                    if hasattr(shap_values, "feature_names"):
+                        shap_values.feature_names = data.columns.tolist()
+
+                    return shap_values
+
                 except Exception as e:
-                    self.logger.warning(f"常规 Explainer 报错: {e}，启用内核级提取...")
-                    # 最后的最后：使用 Permutation（置换）解释器，虽然慢，但绝对能跑通
-                    # 它是通过扰动预测函数实现的，不读取树内部结构，避开所有序列化 Bug
-                    explainer = shap.maskers.Independent(data)
-                    explainer_gen = shap.Explainer(model.predict, explainer)
-                    return explainer_gen(data)
+                    self.logger.error(f"❌ 置换解释器内核异常: {str(e)}")
+                    return None
 
-            self.logger.info("执行非线性归因提取 (Permutation Mode)...")
-            shap_values_j = safe_extract_shap(model_j, X_df)
-            shap_values_f = safe_extract_shap(model_f, X_df)
+            self.logger.info("执行非线性贡献度分解 (Sampling-based Inference)...")
+            shap_values_j = get_robust_explanation(model_j, X_clean)
+            shap_values_f = get_robust_explanation(model_f, X_clean)
 
-            return X_df, shap_values_j, shap_values_f
+            if shap_values_j is not None and shap_values_f is not None:
+                self.logger.info("✅ SHAP 任务圆满完成。归因矩阵已生成。")
+            else:
+                self.logger.warning("归因矩阵生成异常，将由后序绘图组件执行空值保护。")
+
+            return X_clean, shap_values_j, shap_values_f
 
         except Exception as e:
-            self.logger.error(f"❌ SHAP 引擎严重计算异常: {str(e)}", exc_info=True)
+            self.logger.error(f"❌ Stage 4 归因引擎发生未捕获异常: {str(e)}", exc_info=True)
             return None, None, None
 
     def plot_global_importance(self, shap_values):
         """
-        绘制全局重要性蜂群图 (Beeswarm Plot)。
+        【工业级重构】手动构建特征重要性图。
+        原理：直接提取 |SHAP| 均值，彻底摆脱 shap.plots 库的 API 陷阱。
         """
         if shap_values is None: return
-        try:
-            import shap
-            plt.figure(figsize=(10, 8))
-            # 绘制特征影响力密度
-            shap.plots.beeswarm(
-                shap_values,
-                max_display=12,
-                show=False,
-                color=plt.get_cmap("coolwarm")
-            )
-            plt.title("Latent Determinants of Success (SHAP Feature Importance)", fontsize=14, pad=20)
-            plt.tight_layout()
 
-            self.plotter.save_figure("task3_shap_global_beeswarm.png")
+        try:
+            # 1. 提取原始数值 (核心解耦)
+            # shap_values.values 是 (N_samples, N_features) 的矩阵
+            # shap_values.feature_names 是特征列表
+            vals = np.abs(shap_values.values).mean(axis=0)
+            feature_names = shap_values.feature_names
+
+            importance_df = pd.DataFrame({
+                'feature': feature_names,
+                'importance': vals
+            }).sort_values(by='importance', ascending=True).tail(12)
+
+            # 2. 原生 Matplotlib 渲染
+            plt.figure(figsize=(10, 6))
+            colors = [self.plotter.colors['fan'] if 'ind' in f else self.plotter.colors['judge']
+                      for f in importance_df['feature']]
+
+            bars = plt.barh(importance_df['feature'], importance_df['importance'], color=colors, alpha=0.8)
+            plt.grid(axis='x', linestyle=':', alpha=0.5)
+            plt.title("Latent Determinants of Success: Mean |SHAP| Impact", fontsize=14, fontweight='bold')
+            plt.xlabel("Average impact on model output magnitude (Normalized)", fontsize=12)
+
+            plt.tight_layout()
+            self.plotter.save_figure("task3_shap_global_importance.png")
+            self.logger.info("✅ 全局重要性图已通过原生驱动生成。")
         except Exception as e:
-            self.logger.warning(f"SHAP 全局绘图失败: {e}")
+            self.logger.error(f"SHAP 全局绘图失败: {e}")
 
     def plot_age_dependence_contrast(self, shap_j, shap_f):
         """
-        【学术杀手锏】对比年龄 (Age) 在评委侧和观众侧的异质性影响。
-        物理意义：通过 SHAP 依赖图对比 Meritocracy vs. Populism 的认知差异。
+        【学术杀手锏】原生驱动的年龄依赖对比图。
+        彻底删除所有对 shap.plots.scatter 的调用。
         """
         if shap_j is None or shap_f is None: return
 
         try:
-            import shap
             fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+            target_col = "celebrity_age_during_season"
 
-            # --- 左图：评委侧偏见 (Judge Bias) ---
-            # 预期：随着年龄增加呈线性或加速递减
-            shap.plots.scatter(
-                shap_j[:, "celebrity_age_during_season"],
-                ax=ax1,
-                show=False,
-                color=self.plotter.colors['judge'],
-                alpha=0.6,
-                s=25
-            )
-            ax1.set_title("Expert Bias: Age vs. Technical Merit", fontsize=14, fontweight='bold')
-            ax1.set_ylabel("SHAP Value (Impact on Score)", fontsize=12)
-            ax1.set_xlabel("Celebrity Age", fontsize=12)
-            ax1.grid(True, alpha=0.3, linestyle='--')
+            # 内部渲染算子
+            def render_scatter(ax, shap_obj, color, title, ylabel):
+                # 提取原始数据
+                # 注意：shap_obj 可能是 Explanation 对象
+                x = shap_obj[:, target_col].data
+                y = shap_obj[:, target_col].values
 
-            # --- 右图：观众侧倾向 (Fan Sentiment) ---
-            # 预期：可能呈现非线性的双峰或平缓波动
-            shap.plots.scatter(
-                shap_f[:, "celebrity_age_during_season"],
-                ax=ax2,
-                show=False,
-                color=self.plotter.colors['fan'],
-                alpha=0.6,
-                s=25
-            )
-            ax2.set_title("Public Sentiment: Age vs. Latent Votes", fontsize=14, fontweight='bold')
-            ax2.set_ylabel("SHAP Value (Impact on Vote Share)", fontsize=12)
-            ax2.set_xlabel("Celebrity Age", fontsize=12)
-            ax2.grid(True, alpha=0.3, linestyle='--')
+                # 散点渲染
+                ax.scatter(x, y, color=color, alpha=0.4, s=35, edgecolors='white', linewidth=0.4)
 
-            plt.suptitle("Age Heterogeneity: Comparing Meritocratic and Populistic Evaluative Heuristics", fontsize=16)
+                # 添加学术级趋势拟合 (LOWESS 平滑近似)
+                # 使用多项式拟合作为稳健替代
+                z = np.polyfit(x.astype(float), y.astype(float), 2)
+                p = np.poly1d(z)
+                xp = np.linspace(x.min(), x.max(), 100)
+                ax.plot(xp, p(xp), color='black', linestyle='--', linewidth=2.5, label='Non-linear Trend')
+
+                ax.set_title(title, fontsize=14, fontweight='bold')
+                ax.set_ylabel(ylabel, fontsize=12)
+                ax.set_xlabel("Celebrity Age", fontsize=12)
+                ax.grid(True, alpha=0.2)
+
+            # 执行双路渲染
+            render_scatter(ax1, shap_j, self.plotter.colors['judge'],
+                           "Expert Evaluative Heuristics", "SHAP Impact on Scores")
+            render_scatter(ax2, shap_f, self.plotter.colors['fan'],
+                           "Public Sentiment Heuristics", "SHAP Impact on Vote Share")
+
+            plt.suptitle("Age Heterogeneity: Decoding Structural Bias between Expert and Populist Criteria",
+                         fontsize=16)
             plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 
             self.plotter.save_figure("task3_age_heterogeneity_dependence.png")
-            self.logger.info("年龄依赖对比图已存至 reports/figures/。")
-
+            self.logger.info("✅ 年龄依赖对比图已通过原生驱动生成（已绕过 API 陷阱）。")
         except Exception as e:
-            self.logger.warning(f"SHAP 依赖图绘制失败: {e}")
+            self.logger.error(f"SHAP 依赖图绘制失败: {e}")

@@ -3,7 +3,6 @@
 # Role: Robustness & Sensitivity Audit Engine (Task 1 & 2)
 # Function: Monte Carlo Noise Injection to quantify Mechanism Stability (SNR)
 # Academic Goal: Proving "Rank Rule" acts as a Low-Pass Filter against Fan Noise.
-# Standard: Industrial Reliability / O-Prize Visualization
 # ==============================================================================
 
 import pandas as pd

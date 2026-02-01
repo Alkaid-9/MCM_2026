@@ -1,0 +1,43 @@
+# ==============================================================================
+# MCM 2026 Problem C: DWTS Latent Variable Recovery & Mechanism Audit System
+# Environment: Python 3.10+ | Hybrid Architecture (C++/Numba)
+# Role: Dependency Manifest for Industrial-Grade Reproducibility
+# ==============================================================================
+
+# --- Core Numerical Backend ---
+numpy==1.26.4
+scipy==1.15.3
+pandas==2.3.3
+
+# --- High-Performance Computing (HPC) ---
+# Used for JIT-accelerated Monte Carlo simulations and grid searching
+numba==0.63.1
+joblib==1.4.2
+
+# --- Machine Learning & Explainable AI (XAI) ---
+# Note: XGBoost 3.x requires the Permutation Explainer logic implemented in
+# shap_interpreter.py to bypass model serialization artifacts.
+xgboost==3.1.3
+shap==0.49.1
+
+# --- Statistical Forensics & Econometrics ---
+# statsmodels: for Hierarchical Linear Mixed-Effects Models (LMM)
+# lifelines: for Kaplan-Meier Survival Forensics
+statsmodels==0.14.2
+lifelines==0.29.0
+
+# --- Visualization & Academic Plotting ---
+matplotlib==3.9.0
+seaborn==0.13.2
+arviz==0.19.0
+
+# --- Infrastructure & System Audit ---
+# PyYAML: Configuration management (rules.yaml, priors.yaml)
+# psutil: System resource auditing in check_dependencies.py
+PyYAML==6.0.1
+psutil==5.9.8
+tqdm==4.66.4
+
+# --- Hybrid Integration (C++ Bridge) ---
+# pybind11 is required to compile the Bayesian Inference Kernel
+pybind11==2.12.0

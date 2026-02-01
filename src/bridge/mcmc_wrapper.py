@@ -2,7 +2,6 @@
 # src/bridge/mcmc_wrapper.py
 # Role: MCMC Python Bridge (Industrial Refactor v4.6 - Full-Rank Consistency)
 # Function: Bridging Pandas to C++ with Metadata Restoration (The Grand Join).
-# Standard: O-Prize Research Ready / Correcting for the Bobby Bones Anomaly.
 # ==============================================================================
 
 import sys
