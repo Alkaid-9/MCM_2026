@@ -64,8 +64,8 @@ class DivergenceAnalyzer:
             'cosine_sim': cosine_sim,
             'dissonance_idx': dissonance_idx,
             'features': list(common_features),
-            'v_judge': v_judge,
-            'v_fan': v_fan
+            'v_judge': v_j,
+            'v_fan': v_f
         }
 
     def plot_preference_radar(self, results_dict):

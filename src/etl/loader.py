@@ -1,11 +1,12 @@
 """
 MCM 2026 Problem C: Industrial Grade Data Loader
 Role: Secure I/O, Type Enforcement, and Metadata Auditing
+Standard: Industrial Grade Robustness / Academic Data Integrity
 """
-
 import pandas as pd
 import numpy as np
 import logging
+import os
 from pathlib import Path
 from src.etl.config_loader import ConfigLoader
 
@@ -30,7 +31,7 @@ class DataLoader:
         self.logger.info(f"正在从磁盘加载原始数据: {raw_path}")
 
         # A. 定义强类型映射 (Pandas 1.0+ Int64 支持 Nullable)
-        # 物理直觉：Season 和 Placement 是离散整数坐标，必须严谨
+        # 物理直觉：Season 和 Placement 是离散整数坐标，必须严谨，不能因为 NaN 变成 float
         dtype_map = {
             'celebrity_name': 'string',
             'ballroom_partner': 'string',
@@ -46,6 +47,7 @@ class DataLoader:
         try:
             # B. 执行读取并处理 N/A
             # 物理直觉：数据手册提到 N/A 表示缺席或未播出，统一转为 np.nan
+            # [关键修复] encoding='utf-8-sig' 处理 Windows Excel 保存时可能留下的 BOM (\ufeff)
             df = pd.read_csv(
                 raw_path,
                 dtype=dtype_map,
@@ -67,13 +69,17 @@ class DataLoader:
         """
         学术严谨性审计：检查核心索引列是否存在数据缺失。
         """
+        # 这些列是后续逻辑的锚点，绝对不能有空值
         critical_cols = ['celebrity_name', 'season', 'results']
         for col in critical_cols:
+            if col not in df.columns:
+                raise KeyError(f"原始数据严重损坏，缺失关键列: {col}")
+
             missing_count = df[col].isna().sum()
             if missing_count > 0:
                 self.logger.error(f"严重错误：关键列 {col} 存在 {missing_count} 处空值！")
-                # 在数院建模中，如果核心索引丢失，手动填充会导致严重的推断偏差
-                # 这里我们采取‘零容忍’策略
+                # 注意：这里我们记录 Error 但暂不抛出异常，交给 Validator 做最终熔断
+                # 这允许在 Pipeline 中间查看是哪行数据出了问题
 
     def save_processed_data(self, df: pd.DataFrame, layer: str):
         """
@@ -90,11 +96,11 @@ class DataLoader:
         else:
             raise ValueError(f"Unknown data layer: {layer}")
 
-        # 创建目录
+        # 创建目录 (防御性编程)
         Path(target_path).parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            # 工业标准：对于大规模数据建议使用 Parquet，但美赛通常提交 CSV
+            # 工业标准：CSV 保存时去除索引，使用 UTF-8
             df.to_csv(target_path, index=False, encoding='utf-8')
             self.logger.info(f"数据已成功持久化至 {layer} 层: {target_path}")
         except Exception as e:
@@ -105,8 +111,11 @@ class DataLoader:
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(name)s - %(levelname)s - %(message)s')
     loader = DataLoader()
-    raw_df = loader.load_bronze_data()
-    print("\n--- Data Sample ---")
-    print(raw_df.head())
-    print("\n--- Column Types ---")
-    print(raw_df.dtypes)
+    try:
+        raw_df = loader.load_bronze_data()
+        print("\n--- Data Sample ---")
+        print(raw_df.head())
+        print("\n--- Column Types ---")
+        print(raw_df.dtypes)
+    except Exception as e:
+        print(f"Test failed (Check if data file exists): {e}")
