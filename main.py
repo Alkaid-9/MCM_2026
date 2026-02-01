@@ -1,8 +1,10 @@
-"""
-MCM 2026 Problem C: The Invisible Hand - Supreme Command Center
-Role: End-to-End Pipeline Orchestration (ETL -> Inference -> Diagnostics)
-Standard: O-Prize Research Ready / Industrial HPC Pipeline
-"""
+# ==============================================================================
+# MCM 2026 Problem C: "The Invisible Hand of the Audience"
+# MAIN INTEGRATION PIPELINE (Final Production Version)
+# Role: Supreme Command Center for Stage 1-6 Execution
+# Architecture: Hybrid HPC (C++/Numba) + Bayesian Inference + Causal XAI
+# Standard: O-Prize Academic Excellence / Quant Engineering
+# ==============================================================================
 
 import os
 import sys
@@ -10,141 +12,136 @@ import time
 import logging
 import pandas as pd
 import numpy as np
-from pathlib import Path
-from datetime import datetime
 
-# --- 1. 环境自适应与路径注入 ---
-PROJECT_ROOT = Path(__file__).resolve().parent
-sys.path.append(str(PROJECT_ROOT))
+# --- 0. 环境霸权配置 (Environment Locking) ---
+# 必须在导入 numpy/pandas/sklearn 之前设置，否则无效
+# 物理意义：将所有数学库的算力锁定在 23 个物理核心上，避免超线程上下文切换的开销
+os.environ["OMP_NUM_THREADS"] = "23"
+os.environ["MKL_NUM_THREADS"] = "23"
+os.environ["NUMBA_NUM_THREADS"] = "23"
+os.environ["OPENBLAS_NUM_THREADS"] = "23"
 
+# 导入自研组件
 from src.etl.config_loader import ConfigLoader
+from src.utils.logger import setup_logger
 from src.etl.pipeline import run_etl_stage
 from src.bridge.mcmc_wrapper import MCMCInferenceWrapper
-from src.utils.logger import setup_logger
-
-
-def print_banner(logger):
-    """打印符合工业标准的系统启动横幅"""
-    banner = """
-    ========================================================================
-    MCM 2026 PROBLEM C: THE INVISIBLE HAND (BIO-ENGINE V4.5)
-    --------------------------------------------------------
-    Target: Bayesian Inverse Optimization of Latent Fan Preferences
-    Kernel: C++17 / OpenMP (23-Core Parallel) / Adaptive MH
-    Author: Lone Wolf Research Team (O-Prize Track)
-    ========================================================================
-    """
-    for line in banner.split('\n'):
-        logger.info(line.strip())
+from src.analysis.mechanism_pipeline import MechanismAnalysisPipeline
+from src.analysis.causality_pipeline import run_causality_stage
+from src.solvers.design_pipeline import MechanismDesignPipeline
+from src.utils.abstract_helper import AbstractHelper
+from src.utils.exporter import MCMProjectExporter
 
 
 def main():
-    # --- A. 系统引导 (Bootstrap) ---
-    config = ConfigLoader()
+    # --- 1. 系统初始化 ---
+    # 加载全局配置与日志系统
+    config_provider = ConfigLoader()
+    log_path = config_provider.get_path('logs')
+    logger = setup_logger("MCM_COMMAND_CENTER", log_path)
 
-    # 初始化日志系统
-    log_path = config.get_path('logs')
-    logger = setup_logger("COMMAND_CENTER", log_path)
-    print_banner(logger)
+    start_wall_clock = time.time()
 
-    start_time = time.time()
+    logger.info("=" * 80)
+    logger.info("   MCM 2026 PROBLEM C: FULL SYSTEM ACTIVATED   ")
+    logger.info("   Target: O-Prize / Beijing 985 Math Dept Standard   ")
+    logger.info("   Kernel: C++17 Accelerated Bayesian Inference Engine   ")
+    logger.info("=" * 80)
 
     try:
         # ======================================================================
-        # STAGE 1: 数据精炼层 (ETL & Gold Feature Engineering)
+        # STAGE 1: 数据取证与信号精炼 (Data Forensics & Signal Processing)
+        # 目标：从脏数据中提取 33 维黄金因子库，建立因果防火墙
         # ======================================================================
-        logger.info(">>> [STAGE 1/3] 启动 ETL 流水线: 从 Bronze 原始数据熔炼 Gold 特征库...")
-        t1 = time.time()
-
+        logger.info(">>> STAGE 1: 启动数据地基构建 (ETL Pipeline)...")
         df_gold = run_etl_stage()
 
-        elapsed_t1 = time.time() - t1
-        logger.info(f"✅ Stage 1 完成。样本规模: {len(df_gold)} | 耗时: {elapsed_t1:.2f}s")
+        # 审计检查
+        logger.info(f"      [OK] 数据地基已夯实: {df_gold.shape[0]} 观测点, {df_gold.shape[1]} 因子")
 
         # ======================================================================
-        # STAGE 2: 贝叶斯反演层 (Bayesian Inverse Optimization)
+        # STAGE 2: 贝叶斯潜变量反演 (Bayesian Inference Engine)
+        # 目标：利用 C++ Kernel 逆向推导 34 季隐藏的观众投票分布 (Task 1)
         # ======================================================================
-        logger.info(">>> [STAGE 2/3] 启动 C++ 高性能反演引擎: 正在生成 Platinum 后验数据层...")
-        t2 = time.time()
+        logger.info(">>> STAGE 2: 启动 C++ 高性能反演引擎 (Bayesian Task 1)...")
+        inference_engine = MCMCInferenceWrapper()
 
-        # 实例化混合架构桥接器
-        wrapper = MCMCInferenceWrapper()
+        # 执行批处理推理：23 核并行咆哮
+        # 这里会调用 bindings.cpp 里的 run_parallel_inference
+        df_platinum = inference_engine.run_batch_inference(df_gold)
 
-        # 执行全量 34 个赛季的并行 MCMC 推断
-        df_platinum_raw = wrapper.run_batch_inference(df_gold)
-
-        # 将推断结果与 Gold 层特征进行 Left Join，构建完整的分析面板
-        df_platinum = df_gold.merge(
-            df_platinum_raw,
-            on=['season', 'week_num', 'celebrity_name'],
-            how='left'
-        )
-
-        # 保存 Platinum 层最终结果
-        output_path = Path(config.get_path('platinum_results'))
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        df_platinum.to_csv(output_path, index=False)
-
-        elapsed_t2 = time.time() - t2
-        logger.info(f"✅ Stage 2 完成。结果已持久化至: {output_path}")
-        logger.info(f"HPC 推理总耗时: {elapsed_t2:.2f}s (平均每赛季 {(elapsed_t2 / 34):.2f}s)")
+        # 持久化 Platinum Layer (这是所有后续分析的“浓缩铀”)
+        platinum_path = config_provider.get_path('platinum_results')
+        # 确保目录存在
+        os.makedirs(os.path.dirname(platinum_path), exist_ok=True)
+        df_platinum.to_csv(platinum_path, index=False)
+        logger.info(f"      [OK] 潜变量后验分布已固化至: {platinum_path}")
 
         # ======================================================================
-        # STAGE 3: 战略审计与关键结论 (Strategic Audit)
+        # STAGE 3: 机制审计与反事实推演 (Forensics & Multiverse)
+        # 目标：量化 Rank/Percent 优劣，审计 Bobby Bones 案例 (Task 2)
         # ======================================================================
-        logger.info(">>> [STAGE 3/3] 启动系统级审计与历史异象复盘...")
+        logger.info(">>> STAGE 3: 启动‘平行宇宙’机制审计 (Forensics Task 2)...")
+        forensics_pipeline = MechanismAnalysisPipeline(df_platinum)
 
-        # 3.1 统计稳健性审计
-        conv_rate = df_platinum['is_converged'].mean()
-        avg_rhat = df_platinum['r_hat'].mean()
-        avg_fidelity = df_platinum['fidelity'].mean()
+        # 执行生存分析、敏感性测试、Bobby Bones 专项审计
+        audit_report = forensics_pipeline.run_full_audit()
 
-        logger.info("-" * 40)
-        logger.info(f"📊 全局统计审计报告:")
-        logger.info(f"- MCMC 收敛率 (R-hat < 1.1): {conv_rate:.2%}")
-        logger.info(f"- 平均 R-hat 指标: {avg_rhat:.4f}")
-        logger.info(f"- 规则还原保真度 (Fidelity): {avg_fidelity:.4f}")
-
-        if conv_rate < 0.95:
-            logger.warning("⚠️ 警告：部分周次未通过收敛审计。建议在 priors.yaml 中增加采样深度。")
-
-        # 3.2 针对题目要求的 Controversy Case 自动复盘
-        logger.info("-" * 40)
-        logger.info("🔍 题目案例回访 (Case Study Replay):")
-
-        # Case S27: Bobby Bones (低分夺冠异象)
-        bobby = df_platinum[
-            (df_platinum['season'] == 27) &
-            (df_platinum['celebrity_name'].str.contains('Bones', na=False))
-            ]
-        if not bobby.empty:
-            avg_vote = bobby['est_fan_vote_mu'].mean()
-            # 物理洞察：计算其估计得票率与平均值的偏离倍数
-            peer_avg = df_platinum[df_platinum['season'] == 27]['est_fan_vote_mu'].mean()
-            multiplier = avg_vote / peer_avg
-            logger.info(f"🚩 [S27 Bobby Bones]: 估计得票率 {avg_vote:.2%}, 为同期平均水平的 {multiplier:.1f} 倍。")
-            logger.info(f"   结论: 模型捕捉到了极端的流量溢价，这是对其低技术分夺冠的唯一合理解释。")
-
-        # Case S02: Jerry Rice (低分亚军)
-        jerry = df_platinum[
-            (df_platinum['season'] == 2) &
-            (df_platinum['celebrity_name'].str.contains('Rice', na=False))
-            ]
-        if not jerry.empty:
-            logger.info(f"🚩 [S02 Jerry Rice]: 推演 Fidelity 为 {jerry['fidelity'].mean():.4f}。")
-            logger.info(f"   结论: 在 Rank 规则下，即便评委分垫底，只要其粉丝投票稳居前 15%，生存逻辑依然成立。")
+        # 提取关键学术指标用于日志展示
+        robustness_gain = audit_report['sensitivity_metrics'].get('robustness_advantage', 0)
+        logger.info(f"      [OK] 机制审计完成。Rank 赛制稳定性相对增益: {robustness_gain:.2%}")
 
         # ======================================================================
-        # 终点线
+        # STAGE 4: 因果归因与审美分歧 (Causal Attribution & XAI)
+        # 目标：剥离舞伴红利，量化认知失调，绘制蝴蝶图 (Task 3)
         # ======================================================================
-        total_time = time.time() - start_time
+        logger.info(">>> STAGE 4: 启动归因分析与因果推断 (Causality Task 3)...")
+        fig_dir = config_provider.get_path('figures_dir')
+
+        # 执行 LMM、SHAP、Dissonance 分析
+        causality_report = run_causality_stage(df_platinum, fig_dir=fig_dir)
+
+        dissonance = causality_report['metrics'].get('dissonance_index', 0)
+        logger.info(f"      [OK] 归因完成。识别系统性审美分歧指数: {dissonance:.4f}")
+
+        # ======================================================================
+        # STAGE 5: 帕累托最优机制设计 (Mechanism Design)
+        # 目标：寻找 Equity-Efficiency 平衡点，提出 DAW 系统 (Task 4)
+        # ======================================================================
+        logger.info(">>> STAGE 5: 启动多目标寻优与博弈论审计 (Design Task 4)...")
+        design_pipeline = MechanismDesignPipeline(df_platinum)
+
+        # 针对 Bobby Bones 所在的 S27 进行高压参数寻优
+        design_metrics = design_pipeline.run_design_suite(target_season=27)
+
+        equity_lift = design_metrics['DAW']['equity'] - design_metrics['PERCENT']['equity']
+        logger.info(f"      [OK] 机制进化完成。DAW 系统公平性帕累托提升: {equity_lift:.4f}")
+
+        # ======================================================================
+        # STAGE 6: 成果收割与论文自动化 (Final Deliverables)
+        # 目标：生成 Abstract 论据、LaTeX 代码附录
+        # ======================================================================
+        logger.info(">>> STAGE 6: 执行最终科研成果收割 (Final Harvesting)...")
+
+        # 1. 自动生成摘要核心论据 (Punchlines)
+        harvest_helper = AbstractHelper()
+        all_metrics = harvest_helper.harvest_all_metrics()
+        harvest_helper.generate_punchlines(all_metrics)
+
+        # 2. 自动化代码附录生成 (Exporter)
+        project_root = os.path.dirname(os.path.abspath(__file__))
+        exporter = MCMProjectExporter(project_root)
+        exporter.run()
+
+        # --- 完美落幕 ---
+        total_runtime = time.time() - start_wall_clock
         logger.info("=" * 80)
-        logger.info(f"🎉 系统全线运行成功！总执行耗时: {total_time:.2f}s")
-        logger.info("📂 铂金层数据已准备就绪，请启动 Notebook 进行最后的绘图展示。")
+        logger.info(f"   MISSION ACCOMPLISHED | Total Runtime: {total_runtime / 60:.2f} min   ")
+        logger.info(f"   Output Artifacts Ready in: reports/   ")
         logger.info("=" * 80)
 
     except Exception as e:
-        logger.critical("🔥 [FATAL] 系统在运行过程中遭遇致命崩溃！", exc_info=True)
+        logger.critical(f" [CRITICAL ERROR] 全生命周期流水线崩溃: {str(e)}", exc_info=True)
         sys.exit(1)
 
 

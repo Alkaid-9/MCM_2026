@@ -1452,7 +1452,6 @@ CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o: /mnt/d/Code/MCM_2026/cpp_kerne
   /usr/include/c++/13/bits/stl_iterator.h \
   /usr/include/c++/13/bits/stl_iterator_base_funcs.h \
   /usr/include/c++/13/bits/stl_iterator_base_types.h \
-  /usr/include/c++/13/bits/stl_numeric.h \
   /usr/include/c++/13/bits/stl_pair.h \
   /usr/include/c++/13/bits/stl_tempbuf.h \
   /usr/include/c++/13/bits/stl_uninitialized.h \
@@ -1498,11 +1497,9 @@ CMakeFiles/mcm_core_lib.dir/src/likelihood.cpp.o: /mnt/d/Code/MCM_2026/cpp_kerne
   /usr/include/c++/13/istream \
   /usr/include/c++/13/limits \
   /usr/include/c++/13/new \
-  /usr/include/c++/13/numeric \
   /usr/include/c++/13/ostream \
   /usr/include/c++/13/pstl/execution_defs.h \
   /usr/include/c++/13/pstl/glue_algorithm_defs.h \
-  /usr/include/c++/13/pstl/glue_numeric_defs.h \
   /usr/include/c++/13/pstl/pstl_config.h \
   /usr/include/c++/13/sstream \
   /usr/include/c++/13/stdexcept \
