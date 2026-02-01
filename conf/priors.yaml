@@ -2,35 +2,45 @@
 # MCM 2026 Problem C: Statistical Shape & Prior Definitions
 # Role: Defining the "Mental Model" of Fan Behavior (The Superstar Effect)
 # Function: Providing hyperparameters for the Bayesian Prior Engine.
-# Academic Goal: Modeling latent social influence via Power-law distributions.
+# Academic Goal: Modeling latent social influence via Power-law & Log-Normal distributions.
+# Version: 5.2.0-Edition
 # ==============================================================================
 
 metadata:
   framework: "Bayesian Inverse Optimization (BIO)"
-  author: "Quantitative Inference Engine v5.0"
+  author: "Quantitative Inference Engine v5.2"
   description: "Hyperparameters for Zipfian and Dirichlet Manifolds on the Simplex."
 
 # ------------------------------------------------------------------------------
 # 1. 核心分布形态 (Latent Distribution Models)
-# 物理意义：模拟社交媒体的马太效应，即“流量向头部倾斜”。
+# 物理意义：模拟社交媒体的马太效应 (Matthew Effect)，即“流量向头部倾斜”。
 # ------------------------------------------------------------------------------
 vote_distribution:
-  primary_model: "Zipf_Power_Law"  # 主模型：幂律分布
-  # 公式: P(r) ~ 1 / r^alpha
+  # [主模型]: 幂律分布 (Power Law)
+  # 理论基础: Barabási & Albert (1999) "Preferential Attachment" in Social Networks.
+  # 公式: P(r) \propto 1 / r^alpha
+  primary_model: "Zipf_Power_Law"
 
   zipf_params:
-    # 标准衰减指数：1.2 是社交网络关注度的典型参数
-    # alpha 越大，第一名与最后一名的票数差距越呈指数级拉开
+    # 标准衰减指数 (alpha)
+    # alpha = 1.0: Zipf's Law (典型自然语言词频分布)
+    # alpha > 1.0: 赢家通吃 (Winner-Take-All)，头部效应极强
+    # alpha < 1.0: 扁平化分布 (Flat)，竞争胶着
     alpha_standard: 1.2
 
-    # 截断保护：防止长尾端出现数学上的无穷小，导致 Log-Likelihood 爆炸
+    # 截断保护 (Numerical Stability Floor)
+    # 防止长尾端出现数学上的无穷小，导致 Log-Likelihood 计算溢出
     min_vote_share: 0.001  # 0.1% 的最小保底票仓
 
-  # [备用模型] 用于灵敏度分析对比
-  # 假设观众投票服从对数正态分布而非幂律分布，观察结论是否稳健
+  # [备用模型]: 对数正态分布 (Log-Normal)
+  # 用途: 用于 Section 7.1 的 Model Misspecification Test (模型误设检验)
+  # 假设: 观众投票是大量独立随机乘法过程的结果 (Gibrat's Law).
+  fallback_model: "Log_Normal"
+
   log_normal_params:
     mu_base: 0.0
-    sigma_base: 0.6  # 波动率：决定了“黑马”突破先验屏障的概率
+    sigma_base: 0.6        # 波动率：决定了“黑马”突破先验屏障的概率
+    clip_threshold: [0.001, 0.99]
 
 # ------------------------------------------------------------------------------
 # 2. Dirichlet 先验场参数 (The Bayesian Anchor)
@@ -39,51 +49,60 @@ vote_distribution:
 dirichlet_field:
   # 基础浓度 (Concentration Base)
   # 对应 rules.yaml 中的 prior_strength
-  # alpha_vector = 1 + strength * prior_mean
+  # Math: alpha_vector = 1 + strength * prior_mean
+  # Strength -> inf: 模型退化为先验 (忽略数据)
+  # Strength -> 0: 模型退化为最大似然 (MLE)
   concentration_scaling: "Linear"
 
-  # 确定性对冲：在极高评委分差出现时，是否自动调弱先验强度
+  # 确定性对冲 (Deterministic Hedge)
+  # 逻辑: 在极高评委分差出现时(如某人满分，某人0分)，Evidence 极强。
+  # 此时应自动调弱先验强度，防止先验偏见掩盖了显而易见的事实。
   adaptive_prior_weakening: true
+  weakening_factor: 0.5    # 强信号下，先验权重减半
 
 # ------------------------------------------------------------------------------
 # 3. 灵敏度分析配置 (Task 7: Robustness Check Scenarios)
 # 学术价值：在论文中证明，无论先验假设如何，结论（如 Rank 优于 Percent）依然成立。
+# 这叫 "Parameter Invariance" (参数不变性)。
 # ------------------------------------------------------------------------------
 sensitivity_analysis:
   # 场景 A: 弱先验 (The Skeptic)
-  # 假设：观众完全随波逐流，没有基于行业背景的固有偏好
+  # 假设：观众完全随波逐流，没有基于行业背景的固有偏好，接近均匀分布。
   scenario_weak:
     prior_strength: 10.0
-    zipf_alpha: 0.5  # 几乎接近均匀分布
+    zipf_alpha: 0.5       # 几乎平坦
 
   # 场景 B: 强先验 (The Believer)
-  # 假设：观众极度看重名气，无视当周舞蹈质量的微小波动
+  # 假设：观众极度看重名气，无视当周舞蹈质量的微小波动。
   scenario_strong:
     prior_strength: 150.0
-    zipf_alpha: 1.8  # 极端的赢家通吃
+    zipf_alpha: 1.8       # 极端的寡头垄断
 
 # ------------------------------------------------------------------------------
 # 4. 赛季特异性覆盖 (Season-Specific Context)
 # 学术严谨性：体现对特定历史背景（如全明星赛）的精细化建模。
 # ------------------------------------------------------------------------------
 season_overrides:
-  # Season 15: All-Stars
-  # 物理意义：全明星赛选手水平接近，流量分布比普通赛季更扁平（Flat-Tail）
+  # Season 15: All-Stars (全明星赛季)
+  # 物理特征：参赛者都是往届冠军/红人，流量分布比普通赛季更均衡。
+  # 调整：降低 Alpha，使分布更扁平。
   15:
-    distribution_model: "Zipf_Power_Law"
+    description: "All-Stars Season"
     alpha: 0.85
     prior_strength: 30.0
 
   # Season 27: The Bobby Bones Anomaly
-  # 即使我们知道结果异常，反演时依然维持标准先验
-  # 这样产生的 Posterior 与 Prior 的巨大 KL 散度才是证据
+  # 物理特征：Bobby Bones 拥有巨大的乡村音乐广播听众基础 (Fanatic Base)。
+  # 策略：即使我们知道结果异常，反演时依然维持标准先验或略微增强，
+  # 这样产生的 Posterior 与 Prior 的巨大 KL 散度才是 "Populism Shock" 的铁证。
   27:
-    distribution_model: "Zipf_Power_Law"
+    description: "High Populism Regime"
     alpha: 1.2
-    prior_strength: 50.0
+    prior_strength: 50.0   # 保持标准强度，让 Likelihood 去冲撞 Prior
 
 # ------------------------------------------------------------------------------
 # 5. 异常监测阈值 (Anomaly Detection Thresholds)
+# 用于自动化审计脚本 (src/utils/audit_report_gen.py)
 # ------------------------------------------------------------------------------
 thresholds:
   # 熵值熔断线：如果 posterior_entropy > 0.9 * max_entropy
@@ -91,4 +110,9 @@ thresholds:
   max_entropy_ratio: 0.90
 
   # 排名位移警戒线：如果推断排名与实际排名偏差超过 N 位
+  # 用于识别 "Hidden Underdog" 或 "Overrated Star"
   rank_displacement_limit: 4
+
+  # KL 散度报警线：Posterior 与 Prior 差异过大
+  # 说明发生了颠覆性的投票事件 (如 S27)
+  kl_divergence_alert: 2.5

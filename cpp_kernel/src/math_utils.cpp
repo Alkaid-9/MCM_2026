@@ -1,6 +1,6 @@
 /**
  * @file math_utils.cpp
- * @brief High-Performance Numerical Kernels Implementation (Industrial Refactor v4.5)
+ * @brief High-Performance Numerical Kernels Implementation (Industrial Refactor v4.6)
  * @author MCM 2026 Problem C - "The Invisible Hand" Team
  *
  * [架构说明 - Architecture]:
@@ -9,15 +9,12 @@
  *
  * [核心优化 - Optimization]:
  * 1. Soft-Rank: 基于矩阵广播 (Broadcasting) 实现全向量化的平滑排名算子。
- * 2. Log-Space Arithmetic: 所有概率运算均在对数域完成，防止下溢。
+ * 2. Log-Space Arithmetic: 所有概率运算均在对数域完成，防止下溢 (Underflow)。
  * 3. SIMD: 配合 Eigen 库，确保核心循环被编译为 AVX/AVX2 指令集。
  */
 
 #include "math_utils.hpp"
-#include "types.hpp"
 #include <unsupported/Eigen/SpecialFunctions> // [核心依赖] 用于 std::lgamma 的向量化版本
-#include <cmath>
-#include <limits>
 #include <iostream>
 #include <algorithm>
 
@@ -133,10 +130,11 @@ namespace math {
         // 如果最大值已经是负无穷，说明全是 0 概率
         if (max_val <= constants::NEG_INF) return constants::NEG_INF;
 
-        // 核心技巧: 提公因式 exp(max)，保证指数部分 <= 1 (即 e^0)
+        // 核心技巧: 提公因式 exp(max)，保证指数项 <= 1 (即 e^0)
         // log( sum exp(vi) ) = log( exp(max) * sum exp(vi - max) )
         //                    = max + log( sum exp(vi - max) )
         Real sum_exp = (v.array() - max_val).exp().sum();
+
         return max_val + std::log(sum_exp);
     }
 
