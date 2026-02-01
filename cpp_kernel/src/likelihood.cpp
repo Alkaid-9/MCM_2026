@@ -37,6 +37,7 @@ namespace engine {
         MechanismType mech_type,
         int winner_idx // <--- 关键参数：冠军锚点
     ) const {
+
         // --- 1. 数值防御 (Stability Guard) ---
         if (!fan_votes_share.allFinite()) return constants::NEG_INF;
 
@@ -63,8 +64,9 @@ namespace engine {
             // [排名制 S1-S2, S28+]: 序数信号叠加
             // 物理映射: Rank 1 为最优 -> 取负号使生存分最大化。
             // 使用 Soft-Rank 算子将离散排名连续化，保证 MCMC 梯度流动。
-            VoteDistribution fan_ranks = mcm::math::compute_soft_ranks(fan_votes_share, cfg_.rank_tau);
-            VoteDistribution judge_ranks = mcm::math::compute_soft_ranks(judge_scores, cfg_.rank_tau);
+            VoteDistribution fan_ranks = mcm::math::soft_rank_descending(fan_votes_share, cfg_.rank_tau);
+            VoteDistribution judge_ranks = mcm::math::soft_rank_descending(judge_scores, cfg_.rank_tau);
+
             survival_score = -1.0 * (fan_ranks + judge_ranks);
         }
 
@@ -125,6 +127,7 @@ namespace engine {
                     violations.push_back(diff);
                 }
             }
+
             // 如果比淘汰者还差的人数 >= 2，说明 elim_idx 不在 Bottom Two。
             if (worse_than_loser_count >= 2) {
                 std::sort(violations.begin(), violations.end());

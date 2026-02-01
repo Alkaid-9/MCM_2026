@@ -22,7 +22,7 @@ namespace engine {
     using namespace mcm::types;
 
     // =========================================================================
-    // 1. 建议分布：单纯形上的对数空间映射游走
+    // 1. 建议分布：单纯形上的对数空间映射游走 (Log-Simplex Proposal)
     // =========================================================================
     Eigen::VectorXd MCMCSampler::propose_log_space_move(
         const Eigen::VectorXd& current,
@@ -30,20 +30,20 @@ namespace engine {
         std::mt19937_64& rng
     ) const {
         // 物理映射: Simplex (有界) -> Log-space (无界)
+        // 加上常数 EPSILON 防止边界点 log(0) 导致采样链断裂
         Eigen::VectorXd log_proposal = (current.array() + constants::EPSILON).log();
 
         // 施加各向同性的高斯扰动
-        std::normal_distribution<double> dist(0.0, step_size);
         for (int i = 0; i < current.size(); ++i) {
-            log_proposal[i] += dist(rng);
+            log_proposal[i] += rng::randn(rng) * step_size;
         }
 
-        // 投影回单纯形: Log-space -> Simplex (确保 Sum=1)
-        return mcm::math::softmax(log_proposal);
+        // 投影回单纯形: Log-space -> Simplex (确保 Sum=1.0)
+        return math::softmax(log_proposal);
     }
 
     // =========================================================================
-    // 2. 单链采样核心：Metropolis-Hastings 动力学
+    // 2. 单链采样核心：Metropolis-Hastings 动力学 (Worker Thread)
     // =========================================================================
     MCMCSampler::ChainState MCMCSampler::run_single_chain(
         int thread_id,
@@ -54,30 +54,32 @@ namespace engine {
         const Eigen::VectorXi& jeopardy_mask,
         const Eigen::VectorXd& prior_mean,
         MechanismType mech_type,
-        int winner_idx // <--- [New] 冠军索引注入点
+        int winner_idx
     ) const {
+
         ChainState state;
         state.current_position = start_pos;
         state.accepted_count = 0;
 
-        auto rng = mcm::rng::RngFactory::create_engine(cfg_.seed, thread_id);
-        std::uniform_real_distribution<double> u_dist(0.0, 1.0);
+        // 初始化线程局部 RNG (核心：保证 23 核随机数流正交)
+        auto rng = rng::RngFactory::create_engine(cfg_.seed, thread_id);
 
-        // 计算初始位置的对数后验 (Log-Posterior)
+        // 计算初始位置的对数后验 (ln P = ln Likelihood + ln Prior)
         state.current_log_lik = evaluator.compute_log_posterior(
-            state.current_position, judge_scores, elim_idx, jeopardy_mask, prior_mean, mech_type, winner_idx
+            state.current_position, judge_scores, elim_idx, jeopardy_mask,
+            prior_mean, mech_type, winner_idx
         );
 
-        // 预热期步数计算
+        // 预热期步数计算 (Burn-in)
         int burn_in_steps = static_cast<int>(cfg_.n_samples * cfg_.burn_in_ratio);
 
-        // --- Dual-Averaging 自适应步长控制 ---
+        // --- Dual-Averaging 自适应步长控制参数 (Nesterov Style) ---
         double step_size = cfg_.init_step_size;
         double log_step_size = std::log(step_size);
         double log_step_size_bar = log_step_size;
         double H_bar = 0.0;
         const double gamma = 0.05, t0 = 10.0, kappa = 0.75;
-        const double mu = std::log(10.0 * step_size);
+        const double mu = std::log(10.0 * step_size); // 目标步长锚点
 
         // --- MCMC 主循环 ---
         for (int iter = 1; iter <= cfg_.n_samples; ++iter) {
@@ -86,14 +88,15 @@ namespace engine {
             Eigen::VectorXd proposal = propose_log_space_move(state.current_position, step_size, rng);
 
             double proposal_log_lik = evaluator.compute_log_posterior(
-                proposal, judge_scores, elim_idx, jeopardy_mask, prior_mean, mech_type, winner_idx
+                proposal, judge_scores, elim_idx, jeopardy_mask,
+                prior_mean, mech_type, winner_idx
             );
 
             // B. Metropolis Acceptance Criterion
             double log_alpha = proposal_log_lik - state.current_log_lik;
             double accept_prob = std::min(1.0, std::exp(log_alpha));
 
-            if (u_dist(rng) < accept_prob) {
+            if (rng::randu(rng) < accept_prob) {
                 state.current_position = proposal;
                 state.current_log_lik = proposal_log_lik;
                 state.accepted_count++;
@@ -102,12 +105,16 @@ namespace engine {
             // C. 步长自适应 (仅在预热期运行)
             if (cfg_.adaptive && iter <= burn_in_steps) {
                 double eta = 1.0 / (iter + t0);
+                // 核心更新方程: 减小 H_bar 会增大 step_size
                 H_bar = (1.0 - eta) * H_bar + eta * (constants::ADAPTIVE_TARGET_ACCEPT - accept_prob);
                 log_step_size = mu - (std::sqrt(iter) / gamma) * H_bar;
+
                 double iter_pow = std::pow(iter, -kappa);
                 log_step_size_bar = iter_pow * log_step_size + (1.0 - iter_pow) * log_step_size_bar;
                 step_size = std::exp(log_step_size);
-            } else if (iter == burn_in_steps + 1) {
+            }
+            else if (iter == burn_in_steps + 1) {
+                // 预热结束，固化平滑后的步长
                 step_size = std::exp(log_step_size_bar);
             }
 
@@ -134,7 +141,7 @@ namespace engine {
     ) {
         long n_vars = judge_scores.size();
 
-        // 封装似然配置
+        // 封装似然配置 (Stiffness 来自 SamplerConfig)
         LikelihoodConfig l_config;
         l_config.rank_tau = cfg_.rank_tau;
         l_config.elim_penalty = cfg_.elim_penalty;
@@ -150,7 +157,7 @@ namespace engine {
             LikelihoodEvaluator local_evaluator(l_config);
 
             // 初始点预热：在先验均值附近开始探测
-            auto rng = mcm::rng::RngFactory::create_engine(cfg_.seed, i, 999);
+            auto rng = rng::RngFactory::create_engine(cfg_.seed, i, 999);
             Eigen::VectorXd start = propose_log_space_move(prior_mean, 0.1, rng);
 
             results[i] = run_single_chain(
@@ -162,10 +169,10 @@ namespace engine {
         // --- PHASE 2: Synchronized Reduce (统计规约) ---
         InferenceResult final_res;
         final_res.posterior_mean = Eigen::VectorXd::Zero(n_vars);
-        Eigen::VectorXd M2 = Eigen::VectorXd::Zero(n_vars);
+        Eigen::VectorXd M2 = Eigen::VectorXd::Zero(n_vars); // 用于在线方差计算
         long long total_count = 0;
 
-        // 构建审计立方体 [维度][链][样本]
+        // 构建审计立方体 [维度][链][样本] 用于 R-hat 计算
         std::vector<std::vector<std::vector<double>>> r_hat_cube(n_vars,
             std::vector<std::vector<double>>(cfg_.n_chains));
 
@@ -183,6 +190,7 @@ namespace engine {
                 Eigen::VectorXd delta2 = sample - final_res.posterior_mean;
                 M2 += delta.cwiseProduct(delta2);
 
+                // 填充 R-hat 审计矩阵
                 for (int d = 0; d < n_vars; ++d) {
                     r_hat_cube[d][c].push_back(sample[d]);
                 }
@@ -202,7 +210,7 @@ namespace engine {
 
         final_res.acceptance_rate = sum_acc / cfg_.n_chains;
 
-        // 计算 Split-R-hat 收敛因子
+        // 计算 Split-R-hat 收敛因子 (多维)
         double max_r = 0.0;
         for (int d = 0; d < n_vars; ++d) {
             double r = mcm::diag::compute_r_hat(r_hat_cube[d]);

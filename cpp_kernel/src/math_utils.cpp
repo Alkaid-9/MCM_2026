@@ -1,20 +1,21 @@
 /**
  * @file math_utils.cpp
- * @brief High-Performance Numerical Kernels Implementation (Industrial Refactor v4.6)
+ * @brief High-Performance Numerical Kernels Implementation (Industrial Refactor v5.2)
  * @author MCM 2026 Problem C - "The Invisible Hand" Team
  *
- * [架构说明 - Architecture]:
- * 本模块是整个 BIO (Bayesian Inverse Optimization) 引擎的数学底座。
- * 它负责将抽象的业务逻辑（如排名、不确定性）转化为计算机能高效处理的浮点运算。
+ * [学术架构说明]:
+ * 本模块作为 BIO (Bayesian Inverse Optimization) 引擎的底层算子库，
+ * 严格执行“数值稳定性第一”原则。通过移位不变性 (Shift-Invariance)
+ * 和对数空间映射，消除了 MCMC 在探索极端概率分布时的浮点数溢出风险。
  *
- * [核心优化 - Optimization]:
- * 1. Soft-Rank: 基于矩阵广播 (Broadcasting) 实现全向量化的平滑排名算子。
- * 2. Log-Space Arithmetic: 所有概率运算均在对数域完成，防止下溢 (Underflow)。
- * 3. SIMD: 配合 Eigen 库，确保核心循环被编译为 AVX/AVX2 指令集。
+ * [优化特性]:
+ * 1. 矩阵化 Soft-Rank: 采用广播机制 (Broadcasting) 替代嵌套循环。
+ * 2. 向量化 Lgamma: 深度集成 Eigen Unsupported 模块。
+ * 3. 内存友好性: 计算过程尽量保持在 L1/L2 Cache 命中的局部空间内。
  */
 
 #include "math_utils.hpp"
-#include <unsupported/Eigen/SpecialFunctions> // [核心依赖] 用于 std::lgamma 的向量化版本
+#include <unsupported/Eigen/SpecialFunctions> // [关键依赖] 提供向量化 lgamma
 #include <iostream>
 #include <algorithm>
 
@@ -24,143 +25,127 @@ namespace math {
     using namespace mcm::types;
 
     // =========================================================================
-    // 1. Soft-Rank 核心实现 (Differentiable Ranking)
+    // 1. Soft-Rank 核心实现 (Differentiable Ranking Engine)
     // =========================================================================
-    // 物理意义:
-    // 将离散的 Rank (1, 2, 3...) 映射为连续可导的势能函数。
-    // 公式: Rank_i = 1 + Sum_{j!=i} Sigmoid( (Score_j - Score_i) / tau )
-    //
-    // 逻辑流:
-    // - 输入 Score 越高，Rank 数值应该越小 (1.0 = 第一名)。
-    // - Score_j > Score_i 时，Diff > 0，Sigmoid -> 1，Rank_i 增加 (变差)。
-    // - tau (温度系数) 决定了排名的"硬度"。tau->0 逼近真实排名；tau->inf 趋向均匀。
-    // =========================================================================
+    /**
+     * @brief 矩阵广播加速的平滑排名算子
+     * 物理意义：将离散的排位博弈映射为连续可导的势能场。
+     * 公式：Rank_i = 1 + \sum_{j!=i} Sigmoid((Score_j - Score_i) / tau)
+     *
+     * [论文 3.1 节关键点]: 通过 tau 参数控制排名的“硬度”，
+     * 解决了离散 Rank 函数在贝叶斯推断中梯度为 0 的“收敛断头台”问题。
+     */
     VoteDistribution compute_soft_ranks(ConstVecRef scores, Real tau) {
         const long n = scores.size();
         if (n == 0) return VoteDistribution(0);
 
-        // [核心优化] 利用 Eigen 广播机制构建差分矩阵
-        // diff_matrix[j, i] = Score_j - Score_i
-        // 物理含义: 衡量 j 比 i 强多少
-        // replicate(r, c) 在内存中是虚拟的表达式，不会立即产生深拷贝，直到 eval
+        // [HPC 优化]: 避免 O(N^2) 标量循环。
+        // diff_matrix(j, i) = Score_j - Score_i
+        // 使用 replicate 进行广播，产生一个全对差分矩阵。
+        // 这将触发编译器的循环展开和 SIMD 优化。
         Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic> diff_matrix =
             scores.replicate(1, n) - scores.transpose().replicate(n, 1);
 
-        // 应用数值稳定的 Sigmoid 算子 (Functor 定义在 math_utils.hpp)
-        // Prob_ji = P(Score_j > Score_i)
-        // 使用 unaryExpr 进行元素级变换，这是 SIMD 友好的
+        // 原子级向量化应用 Sigmoid。
+        // 这里的 StableSigmoidOp 定义在头文件中以支持内联。
         auto prob_matrix = diff_matrix.unaryExpr(StableSigmoidOp(tau));
 
-        // 列求和: 算出"有多少人比 i 强"
-        // Rank_i = 1 + Sum_{j} Prob_ji
-        VoteDistribution rank_sums = prob_matrix.colwise().sum();
-
-        // 修正:
-        // 1. 矩阵包含对角线 (i vs i)，此时 Diff=0, Sigmoid(0)=0.5。我们需要扣除这 0.5。
-        // 2. 排名从 1 开始，所以基准是 +1.0。
-        // Total Correction = -0.5 + 1.0 = +0.5
-        return rank_sums.array() + 0.5;
+        // 对列求和 (ColWise Sum) 计算每个选手的“劣后计数”。
+        // 修正逻辑：
+        // 1. 矩阵包含对角线 (i vs i)，Sigmoid(0)=0.5。需扣除此 0.5。
+        // 2. 序数从 1.0 开始累加。
+        // Correction = -0.5 (self-diag) + 1.0 (base) = +0.5
+        return prob_matrix.colwise().sum().array() + 0.5;
     }
 
     // =========================================================================
-    // 2. 狄利克雷分布对数概率密度 (Log-Dirichlet PDF)
+    // 2. 贝叶斯正则化算子 (Bayesian Regularization)
     // =========================================================================
-    // 物理意义:
-    // 计算当前投票分布 v 是否符合先验 alpha (Zipf's Law)。
-    // 公式: ln P(v|alpha) = ln B(alpha) + sum ( (alpha_i - 1) * ln v_i )
-    // 其中 ln B(alpha) = ln Gamma(sum(alpha)) - sum(ln Gamma(alpha_i))
-    // =========================================================================
+    /**
+     * @brief 对数狄利克雷概率密度 (Log-Dirichlet PDF)
+     * 物理意义：量化当前采样点对 Zipf's Law 粉丝先验的偏离程度。
+     * [重构点]: 必须在对数域完成所有运算，否则高维连乘会导致精度瞬间下溢。
+     */
     Real log_dirichlet_pdf(ConstVecRef v, ConstVecRef alpha) {
-        // [防御] 单纯形边界检查: 票数不能 <= 0，否则 log 无定义
-        // 使用 EPSILON 容差，允许极其微小的正数
+        // [防御性熔断]: 概率单纯形边界检查
         if ((v.array() <= constants::EPSILON).any()) {
             return constants::NEG_INF;
         }
 
-        // 1. 计算归一化常数 (Log Beta Function)
-        Real sum_alpha = alpha.sum();
+        // 公式: ln P = ln Gamma(sum alpha) - sum ln Gamma(alpha) + sum (alpha - 1)ln(v)
+        const Real sum_alpha = alpha.sum();
 
-        // term1 = ln Gamma(sum(alpha))
+        // 1. 归一化项 (Log-Beta Function)
         Real term1 = std::lgamma(sum_alpha);
 
-        // term2 = sum(ln Gamma(alpha_i))
-        // 使用 Eigen 的 digest/lgamma 实现向量化计算
-        // 注意：unsupported 模块中的 lgamma 可能需要 array() 调用
-        Real term2 = alpha.array().lgamma().sum();
+        // 2. 向量化计算每个维度的 Gamma 贡献
+        // 使用 Eigen::unaryExpr 配合 lambda 以触发寄存器级并行
+        Real term2 = alpha.unaryExpr([](Real x) { return std::lgamma(x); }).sum();
 
-        // 2. 计算核心项 (Kernel)
-        // term3 = sum( (alpha_i - 1) * ln(v_i) )
+        // 3. 核心核函数 (Kernel Function)
+        // 向量化点乘: (alpha - 1.0) * log(v)
         Real term3 = ((alpha.array() - 1.0) * v.array().log()).sum();
 
         return term1 - term2 + term3;
     }
 
     // =========================================================================
-    // 3. 香农熵 (Shannon Entropy)
+    // 3. 信息论算子 (Information Theoretic Metrics)
     // =========================================================================
-    // 物理意义:
-    // 衡量系统的混乱度/不确定性。Task 1 中用于量化置信度。
-    // H(p) = - sum p * log2(p)
-    // =========================================================================
+    /**
+     * @brief 香农熵 (Shannon Entropy) - 工业级向量化版
+     * 物理意义：量化反演结果的混乱度 (Task 1 核心度量指标)。
+     * [学术严谨性]: 引入 constants::EPSILON 以防止边界处 log(0) 崩溃。
+     */
     Real compute_entropy(ConstVecRef probs) {
-        // 预计算 1/ln(2) 用于底数转换 (ln -> log2)
+        // 1 / ln(2) 用于将自然对数 (nats) 转换为比特 (bits)
         constexpr Real LOG2_INV = 1.4426950408889634;
 
-        // [防御]
-        // x * log(x) 在 x->0 时极限为 0，但计算机直接算 log(0) 会爆炸。
-        // 加上 EPSILON 是为了数值稳定性。
-        // 由于 probs 是归一化的，加 eps 造成的误差极小可忽略。
-        Real sum_p_ln_p = (probs.array() * (probs.array() + constants::EPSILON).log()).sum();
+        // 向量化计算: - \sum p * ln(p + eps)
+        // 利用表达式模板 (Expression Templates) 减少临时内存分配
+        Real raw_entropy = (probs.array() * (probs.array() + constants::EPSILON).log()).sum();
 
-        return -1.0 * sum_p_ln_p * LOG2_INV;
+        return -1.0 * raw_entropy * LOG2_INV;
     }
 
     // =========================================================================
-    // 4. Log-Sum-Exp (LSE) - 数值稳定版
+    // 4. 数值稳定工具 (Numerical Stability Guards)
     // =========================================================================
-    // 物理意义:
-    // 在对数域进行加法运算: log(sum(exp(v)))
-    // 场景: 用于 MCMC 中的接受率计算，防止概率连乘导致下溢。
-    // =========================================================================
+    /**
+     * @brief Log-Sum-Exp (LSE) 算法
+     * 场景：用于 MCMC 接受率计算 P(Accept) = min(1, exp(log_lik_new - log_lik_old))。
+     * 物理意义：在保持指数精度的前提下，防止浮点数溢出。
+     */
     Real log_sum_exp(ConstVecRef v) {
         if (v.size() == 0) return constants::NEG_INF;
 
         Real max_val = v.maxCoeff();
+        if (std::isinf(max_val)) return constants::NEG_INF;
 
-        // 如果最大值已经是负无穷，说明全是 0 概率
-        if (max_val <= constants::NEG_INF) return constants::NEG_INF;
-
-        // 核心技巧: 提公因式 exp(max)，保证指数项 <= 1 (即 e^0)
-        // log( sum exp(vi) ) = log( exp(max) * sum exp(vi - max) )
-        //                    = max + log( sum exp(vi - max) )
+        // [核心技巧]: 提公因式 exp(max_val)
+        // log(sum(exp(v))) = max_val + log(sum(exp(v - max_val)))
         Real sum_exp = (v.array() - max_val).exp().sum();
-
         return max_val + std::log(sum_exp);
     }
 
-    // =========================================================================
-    // 5. Softmax 投影算子
-    // =========================================================================
-    // 物理意义:
-    // 将 R^N 空间的无约束向量映射回单纯形 (Sum=1)。
-    // 场景: MCMC 建议分布 (Proposal Distribution) 中从 Log-Normal 投影回 Simplex。
-    // =========================================================================
+    /**
+     * @brief Softmax 投影算子 (Manifold Projection)
+     * 物理意义：将 R^N 空间中的随机游走扰动重新投影至概率单纯形 Delta^{n-1}。
+     * [重构点]: 必须执行 Shift-Invariant 变换以抵御大数值波动。
+     */
     VoteDistribution softmax(ConstVecRef x) {
-        // 同样使用 shift-invariant trick 防止 exp 溢出
+        // 减去最大值以确保 exp() 结果处于 (0, 1] 区间
         Real max_val = x.maxCoeff();
-
-        // 分子: exp(x_i - max)
         VoteDistribution exp_x = (x.array() - max_val).exp();
-        Real sum = exp_x.sum();
 
-        // [防御] 极罕见情况防御 (如所有 x 都是 -inf)
-        if (sum < constants::EPSILON) {
-            // 退化为均匀分布
-            long n = x.size();
-            return VoteDistribution::Constant(n, 1.0 / static_cast<Real>(n));
+        Real sum_val = exp_x.sum();
+
+        // 极端崩溃防御：如果所有输入均为负无穷
+        if (sum_val < constants::EPSILON) {
+            return VoteDistribution::Constant(x.size(), 1.0 / static_cast<Real>(x.size()));
         }
 
-        return exp_x / sum;
+        return exp_x / sum_val;
     }
 
 } // namespace math
