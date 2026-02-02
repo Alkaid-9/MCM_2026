@@ -180,7 +180,7 @@ class InferenceVisualizer:
 
         ax.grid(axis='x', linestyle='--', alpha=0.5)
         sns.despine(left=True, bottom=False)
-        ax.legend(loc='lower right', title='Final Status', frameon=True, framealpha=0.9)
+        ax.legend(loc='upper right', title='Final Status', frameon=True, framealpha=0.9)
 
         self.plotter.save_figure(f"task1_violin_S{season}W{week}.png")
 
