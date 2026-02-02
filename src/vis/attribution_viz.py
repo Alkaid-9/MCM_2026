@@ -1,183 +1,261 @@
 # ==============================================================================
 # src/vis/attribution_viz.py
 # Role: Causal Attribution Visualization Engine
-# Function: Visualizing the "Clash of Criteria" between Judges and Fans.
-# Key Outputs: Coefficient Butterfly Plots, Dissonance Radars, ICC Variance Pies.
+# Function: Visualizing the "Clash of Criteria" and Non-linear Drivers.
+# Standard: High-DPI, Publication-Ready, No-Overlap Layout.
 # ==============================================================================
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 import seaborn as sns
 import logging
 import os
-import math
 
-# 引入全局绘图风格配置 (Single Source of Truth for Aesthetics)
-from src.utils.plotting import DWTSPlotter
+# 引入全局绘图风格
+try:
+    from src.utils.plotting import DWTSPlotter
+except ImportError:
+    # Fallback for standalone testing
+    class DWTSPlotter:
+        def __init__(self, output_dir):
+            self.output_dir = output_dir
+            self.colors = {'fan': '#1f77b4', 'judge': '#ff7f0e', 'neutral': '#7f7f7f'}
+
+        def save_figure(self, filename):
+            plt.savefig(os.path.join(self.output_dir, filename), dpi=300, bbox_inches='tight')
+            plt.close()
 
 
 class AttributionVisualizer:
     """
     归因可视化引擎：
-    负责将 LMM (线性混合模型) 和统计归因的抽象数值，
-    转化为直观展示“审美分歧”与“系统性偏见”的视觉证据。
+    负责将 LMM 和 SHAP 的抽象统计结果转化为“社会学证据”。
     """
 
     def __init__(self, fig_dir: str = "reports/figures/"):
         self.logger = logging.getLogger("VIZ_ATTRIBUTION")
         self.fig_dir = fig_dir
-        # 复用全局绘图器，确保字体和配色统一
         self.plotter = DWTSPlotter(output_dir=fig_dir)
         os.makedirs(self.fig_dir, exist_ok=True)
 
+        # 配置学术字体 (Times New Roman)
+        plt.rcParams.update({
+            'font.family': 'serif',
+            'font.serif': ['Times New Roman'],
+            'font.size': 11,
+            'axes.labelsize': 12,
+            'axes.titlesize': 14,
+            'mathtext.fontset': 'stix'
+        })
+
     def plot_lmm_butterfly(self, df_coeffs: pd.DataFrame):
         """
-        【图表 1】系数蝴蝶图 (Butterfly Plot)
-        物理意义：直观对比评委 (Merit) vs 观众 (Populism) 对同一特征的敏感度差异。
-        学术亮点：自动标记符号相反的特征 (Cognitive Dissonance)。
+        【图表 9】系数蝴蝶图 (Butterfly Bar Chart)
+        学术意义：量化“认知失调”(Cognitive Dissonance)。
+        展示精英 (Judges) 与大众 (Fans) 对同一特征权重的分歧。
 
-        :param df_coeffs: 包含 columns ['Feature', 'Judge_Beta', 'Fan_Beta']
+        :param df_coeffs: DataFrame ['Feature', 'Judge_Beta', 'Fan_Beta', 'p_value']
         """
-        self.logger.info("绘制 LMM 系数蝴蝶图 (Butterfly Plot)...")
+        self.logger.info("绘制 LMM 系数蝴蝶图...")
 
-        # 1. 数据预处理：按观众系数绝对值排序，形成漏斗状视觉流
-        if df_coeffs.empty: return
-        df = df_coeffs.copy()
-        df['abs_fan'] = df['Fan_Beta'].abs()
-        df = df.sort_values('abs_fan', ascending=True).reset_index(drop=True)
+        # 1. 数据准备
+        # 按粉丝系数排序，制造“漏斗”视觉效果
+        df = df_coeffs.sort_values('Fan_Beta', ascending=True).reset_index(drop=True)
+        y = np.arange(len(df))
+        height = 0.4
 
-        fig, ax = plt.subplots(figsize=(12, 8))
-        y_pos = np.arange(len(df))
-        height = 0.35
+        # 2. 准备画布
+        fig, ax = plt.subplots(figsize=(10, 8))
 
-        # 2. 绘制双向条形图
-        # 左翼 (或上层)：观众偏好 (蓝色/冷色)
-        rects1 = ax.barh(y_pos + height / 2, df['Fan_Beta'], height,
-                         label='Public Sentiment (Fans)',
-                         color=self.plotter.colors['fan'], alpha=0.9)
+        # 3. 绘制条形 (左侧 Fan 为负值显示，右侧 Judge 为正值)
+        # 注意：Fan_Beta 取负值是为了向左延伸，标签后续修正
+        rects_fan = ax.barh(y, -df['Fan_Beta'].abs(), height, label='Popularity (Fans)',
+                            color=self.plotter.colors['fan'], alpha=0.8, edgecolor='white')
+        rects_judge = ax.barh(y, df['Judge_Beta'].abs(), height, label='Meritocracy (Judges)',
+                              color=self.plotter.colors['judge'], alpha=0.8, edgecolor='white')
 
-        # 右翼 (或下层)：评委偏好 (橙色/暖色)
-        rects2 = ax.barh(y_pos - height / 2, df['Judge_Beta'], height,
-                         label='Expert Quality (Judges)',
-                         color=self.plotter.colors['judge'], alpha=0.9)
+        # 4. 中轴与装饰
+        ax.axvline(0, color='black', linewidth=0.8)
+        ax.set_yticks(y)
+        ax.set_yticklabels(df['Feature'], fontsize=11)
 
-        # 3. 装饰坐标轴
-        ax.set_yticks(y_pos)
-        # 清洗特征名称，去除公式残留
-        clean_labels = [l.replace('C(industry)[T.', '').replace(']', '') for l in df['Feature']]
-        ax.set_yticklabels(clean_labels, fontsize=11)
+        # 5. X轴刻度修正 (去除负号)
+        ticks = ax.get_xticks()
+        ax.set_xticklabels([f"{abs(t):.1f}" for t in ticks])
+        ax.set_xlabel(r"Normalized Impact Magnitude ($|\beta|$)", fontsize=12, fontweight='bold')
 
-        # 添加零轴分割线
-        ax.axvline(0, color='black', linewidth=1.2, linestyle='-')
-        ax.grid(True, axis='x', linestyle='--', alpha=0.3)
+        # 6. 标注“认知失调” (Dissonance Markers)
+        # 逻辑：如果符号相反 (Sign Flip)，则标记冲突
+        for i, row in df.iterrows():
+            # 判断符号是否相反 (且系数足够大，忽略噪音)
+            if (np.sign(row['Fan_Beta']) != np.sign(row['Judge_Beta'])) and \
+                    (abs(row['Fan_Beta']) > 0.05) and (abs(row['Judge_Beta']) > 0.05):
+                # 在条形图较短的一侧外标注
+                target_x = max(abs(row['Fan_Beta']), abs(row['Judge_Beta'])) + 0.05
+                ax.text(target_x, i, "⚡Clash", ha='left', va='center',
+                        color='#d62728', fontsize=9, fontweight='bold', style='italic')
 
-        # 4. 【高阶功能】自动标注认知失调 (Dissonance Markers)
-        # 如果两者符号相反，且绝对值均超过阈值，视为显著冲突
-        for i, (j_val, f_val) in enumerate(zip(df['Judge_Beta'], df['Fan_Beta'])):
-            if np.sign(j_val) != np.sign(f_val) and (abs(j_val) > 0.02 or abs(f_val) > 0.02):
-                # 在较长的一侧标注警告符号
-                target_x = max(j_val, f_val) if j_val > 0 else min(j_val, f_val)
-                offset = 0.05 if target_x > 0 else -0.15
-                ax.text(target_x + offset, i, "⚠ Clash",
-                        fontsize=9, color='#d62728', va='center', fontweight='bold')
+        # 7. 标题与图例
+        ax.set_title("The Evaluation Gap: Elites vs. The Crowd", fontsize=16, pad=20)
+        # 自定义图例位置
+        ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.15), ncol=2, frameon=False)
 
-        plt.title("The Evaluation Gap: Coefficient Contrast (LMM Fixed Effects)", fontsize=15, pad=15)
-        plt.xlabel("Standardized Impact (Beta Coefficient)\n← Negative Correlation | Positive Correlation →",
-                   fontsize=12)
-        plt.legend(loc='lower right', frameon=True, framealpha=0.9)
+        # 网格
+        ax.grid(True, axis='x', linestyle=':', alpha=0.4)
 
+        # 去除边框
+        sns.despine(left=True, bottom=False)
+
+        # 保存
         self.plotter.save_figure("task3_lmm_butterfly.png")
 
-    def plot_dissonance_radar(self, metrics: dict):
+    def plot_shap_summary_proxy(self, shap_df: pd.DataFrame):
         """
-        【图表 2】认知失调雷达图 (Cognitive Divergence Radar)
-        物理意义：将评委和观众的偏好向量投影到极坐标。
-        面积重合度 (IoU) 越低，说明审美标准越割裂。
+        【图表 10】SHAP 蜂群图 (Beeswarm Proxy)
+        学术意义：展示非线性驱动因素。线性模型只能看均值，SHAP 能看分布。
+
+        :param shap_df: DataFrame ['Feature', 'SHAP_Value', 'Feature_Value_Norm']
+                        其中 Feature_Value_Norm 是归一化到 0-1 的原始特征值 (用于颜色映射)
         """
-        self.logger.info("绘制认知失调雷达图...")
+        self.logger.info("绘制 SHAP 非线性蜂群图...")
 
-        # 1. 提取并归一化向量
-        labels = metrics.get('features', [])
-        # 简化标签
-        labels = [l.replace('C(industry_group)[T.', '').replace(']', '') for l in labels]
-        v_j = np.array(metrics.get('v_judge', []))
-        v_f = np.array(metrics.get('v_fan', []))
+        # 1. 准备画布
+        fig, ax = plt.subplots(figsize=(10, 6))
 
-        if len(labels) < 3:
-            self.logger.warning("特征维度不足 (<3)，跳过雷达图绘制。")
-            return
+        # 2. 绘制蜂群 (使用 Seaborn Stripplot)
+        # jitter=True 让点分散开，形成“蜂群”效果
+        # hue 映射特征值高低 (Blue->Red)
+        sns.stripplot(
+            data=shap_df,
+            x='SHAP_Value',
+            y='Feature',
+            hue='Feature_Value_Norm',
+            palette='coolwarm',
+            jitter=0.25,
+            size=4,
+            alpha=0.7,
+            ax=ax,
+            edgecolor='none',
+            zorder=2
+        )
 
-        # 使用绝对值归一化 (关注度权重)
-        v_j_abs = np.abs(v_j)
-        v_f_abs = np.abs(v_f)
-        v_j_norm = v_j_abs / (v_j_abs.max() + 1e-9)
-        v_f_norm = v_f_abs / (v_f_abs.max() + 1e-9)
-
-        # 2. 闭环处理
-        angles = np.linspace(0, 2 * np.pi, len(labels), endpoint=False).tolist()
-        v_j_norm = np.concatenate((v_j_norm, [v_j_norm[0]]))
-        v_f_norm = np.concatenate((v_f_norm, [v_f_norm[0]]))
-        angles += angles[:1]
-
-        # 3. 极坐标绘图
-        fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-
-        # 评委区域
-        ax.plot(angles, v_j_norm, color=self.plotter.colors['judge'], linewidth=2, label='Expert Consensus')
-        ax.fill(angles, v_j_norm, color=self.plotter.colors['judge'], alpha=0.25)
-
-        # 观众区域
-        ax.plot(angles, v_f_norm, color=self.plotter.colors['fan'], linewidth=2, label='Public Sentiment')
-        ax.fill(angles, v_f_norm, color=self.plotter.colors['fan'], alpha=0.25)
+        # 3. 辅助线
+        ax.axvline(0, color='black', linewidth=0.8, linestyle='-', zorder=1)
 
         # 4. 装饰
-        ax.set_theta_offset(np.pi / 2)
-        ax.set_theta_direction(-1)
-        ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(labels, fontsize=11)
-        # 移除径向标签，保持整洁
-        ax.set_yticklabels([])
+        ax.set_xlabel("SHAP Value (Impact on Fan Vote)", fontsize=12, fontweight='bold')
+        ax.set_ylabel("")
+        ax.set_title("Non-linear Drivers of Success: Feature Impact Distribution", fontsize=14, pad=15)
 
-        # 计算简单的重合度 (IoU Proxy) 用于标题展示
-        intersection = np.minimum(v_j_norm, v_f_norm).sum()
-        union = np.maximum(v_j_norm, v_f_norm).sum()
-        iou = intersection / (union + 1e-9)
+        # 5. 处理图例 (替换为 Colorbar)
+        # 移除 seaborn 默认图例
+        ax.get_legend().remove()
 
-        plt.title(f"Cognitive Divergence Radar\n(Preference Overlap Index: {iou:.2f})", y=1.08, fontsize=14,
-                  fontweight='bold')
-        plt.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1))
+        # 手动添加 Colorbar
+        norm = plt.Normalize(0, 1)
+        sm = plt.cm.ScalarMappable(cmap="coolwarm", norm=norm)
+        sm.set_array([])
+        cbar = fig.colorbar(sm, ax=ax, aspect=30, pad=0.02)
+        cbar.set_label("Feature Value (Low $\\to$ High)", rotation=270, labelpad=15)
+        cbar.set_ticks([0, 1])
+        cbar.set_ticklabels(['Low', 'High'])
 
-        self.plotter.save_figure("task3_dissonance_radar.png")
+        # 网格
+        ax.grid(True, axis='x', linestyle=':', alpha=0.4)
+
+        self.plotter.save_figure("task3_shap_beeswarm.png")
 
     def plot_icc_decomposition(self, icc_judge: float, icc_fan: float):
         """
-        【图表 3】方差分解饼图 (Variance Decomposition)
-        物理意义：回答“舞伴有多重要”。比较技术分和观众票中，舞伴效应 (Partner Alpha) 的占比。
+        【图表 11】ICC 方差分解图 (Nested Donut Charts)
+        学术意义：量化“舞伴效应”(Partner Effect) 的占比。
+
+        :param icc_judge: 评委分模型的 ICC
+        :param icc_fan: 粉丝票模型的 ICC
         """
         self.logger.info("绘制 ICC 方差分解图...")
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 7))
+        # 1. 准备画布 (左右两个子图)
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
 
-        # 配色：灰色代表选手自身实力 (Residual)，高亮色代表舞伴加成 (Partner Effect)
-        colors_j = ['#e0e0e0', self.plotter.colors['judge']]
-        colors_f = ['#e0e0e0', self.plotter.colors['fan']]
+        # 定义绘制单个甜甜圈的函数
+        def draw_donut(ax, icc, color_main, title):
+            # 数据: [舞伴效应, 选手自身/噪音]
+            sizes = [icc, 1 - icc]
+            labels = [f'Partner Halo\n{icc:.1%}', f'Star/Residual\n{1 - icc:.1%}']
+            colors = [color_main, '#e0e0e0']  # 高亮舞伴效应，其他置灰
+            explode = (0.05, 0)  # 炸开舞伴部分
 
-        explode = (0, 0.05)  # 突出显示舞伴效应
+            # 绘制饼图
+            wedges, texts, autotexts = ax.pie(
+                sizes,
+                labels=labels,
+                colors=colors,
+                autopct='',  # 不使用默认百分比，手动控制位置
+                startangle=90,
+                pctdistance=0.85,
+                explode=explode,
+                wedgeprops=dict(width=0.4, edgecolor='w')  # width=0.4 变成甜甜圈
+            )
 
-        # Subplot 1: Judge Score Breakdown
-        ax1.pie([1 - icc_judge, icc_judge],
-                labels=['Idiosyncratic Skill\n(Star Only)', 'Pro-Partner Effect\n(Alpha)'],
-                autopct='%1.1f%%', startangle=90, colors=colors_j, explode=explode,
-                textprops={'fontsize': 12}, shadow=True)
-        ax1.set_title("Drivers of Judge Scores", fontsize=14, fontweight='bold', color=self.plotter.colors['judge'])
+            # 中心文字 (大号显示 ICC)
+            ax.text(0, 0, f"ICC\n{icc:.2f}", ha='center', va='center', fontsize=14, fontweight='bold')
 
-        # Subplot 2: Fan Vote Breakdown
-        ax2.pie([1 - icc_fan, icc_fan],
-                labels=['Star Charisma\n(Fame)', 'Pro-Partner Effect\n(Halo)'],
-                autopct='%1.1f%%', startangle=90, colors=colors_f, explode=explode,
-                textprops={'fontsize': 12}, shadow=True)
-        ax2.set_title("Drivers of Fan Votes", fontsize=14, fontweight='bold', color=self.plotter.colors['fan'])
+            # 优化标签样式
+            for text in texts:
+                text.set_fontsize(10)
+                text.set_color('#333')
 
-        plt.suptitle("The 'Pro-Dancer' Halo Effect: Variance Decomposition (ICC)", fontsize=16, y=0.95)
+            ax.set_title(title, fontsize=12, fontweight='bold', pad=10)
+
+        # 2. 绘制评委模型 (Judge)
+        draw_donut(ax1, icc_judge, self.plotter.colors['judge'], "Judge Scores\n(Technical Metric)")
+
+        # 3. 绘制粉丝模型 (Fan)
+        draw_donut(ax2, icc_fan, self.plotter.colors['fan'], "Fan Votes\n(Popularity Metric)")
+
+        # 4. 全局标题
+        plt.suptitle("The 'Pro-Partner' Halo Effect: Variance Decomposition", fontsize=15, y=1.05)
+
         self.plotter.save_figure("task3_icc_decomposition.png")
+
+
+# --- 单元测试 (生成 Mock 数据验证绘图) ---
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    viz = AttributionVisualizer()
+
+    # 1. Test Butterfly
+    df_bf = pd.DataFrame({
+        'Feature': ['Technique', 'Difficulty', 'Chemistry', 'Age', 'Reality Star', 'Country Music'],
+        'Judge_Beta': [0.8, 0.7, 0.4, -0.2, -0.1, -0.3],
+        'Fan_Beta': [0.2, 0.1, 0.5, 0.1, 0.6, 0.8]
+    })
+    viz.plot_lmm_butterfly(df_bf)
+
+    # 2. Test SHAP Beeswarm
+    # 模拟数据：Feature_Value_Norm 0-1, SHAP 随之变化
+    n_samples = 300
+    features = ['Age', 'Partner_Alpha', 'Technique']
+    records = []
+    for f in features:
+        vals = np.random.rand(n_samples)  # Feature Values 0-1
+        # 模拟不同关系：Age 是倒U型，Partner 是正相关
+        if f == 'Age':
+            shaps = -4 * (vals - 0.5) ** 2 + 0.5 + np.random.normal(0, 0.1, n_samples)
+        elif f == 'Partner_Alpha':
+            shaps = 2 * vals - 1 + np.random.normal(0, 0.1, n_samples)
+        else:
+            shaps = np.random.normal(0, 0.2, n_samples)
+
+        for v, s in zip(vals, shaps):
+            records.append({'Feature': f, 'Feature_Value_Norm': v, 'SHAP_Value': s})
+
+    viz.plot_shap_summary_proxy(pd.DataFrame(records))
+
+    # 3. Test ICC
+    viz.plot_icc_decomposition(0.15, 0.08)  # Judge ICC=0.15, Fan ICC=0.08
+
+    print("Test Complete. Check reports/figures/")
