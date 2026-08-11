@@ -17,7 +17,7 @@ from src.etl.config_loader import ConfigLoader
 from src.utils.logger import setup_logger
 from src.core.priors import VotePriors
 from src.bridge.mcmc_wrapper import MCMCInferenceWrapper
-from src.core.uncertainty import UncertaintyAnalyzer # 用于实时熵值监控
+from src.core.uncertainty import UncertaintyQuantifier # 用于实时熵值监控
 
 class BayesianVoteInference:
     """
@@ -41,7 +41,7 @@ class BayesianVoteInference:
         # 2. 实例化子系统
         self.prior_engine = VotePriors()          # 先验工厂
         self.bridge = MCMCInferenceWrapper()      # C++ 桥接器
-        self.uq_monitor = UncertaintyAnalyzer()   # 实时监控器 (轻量级)
+        self.uq_monitor = UncertaintyQuantifier()   # 实时监控器 (轻量级)
 
         # 3. 结果注册表
         self.results_registry = []
