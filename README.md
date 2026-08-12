@@ -24,9 +24,9 @@ To handle the high-dimensional state space of latent fan preferences, the core s
 
 ## 4. Key Numerical Findings
 Our large-scale simulation yielded significant empirical insights:
-- **Inference Fidelity:** **84.1%** (Reconstructed latent variables highly consistent with historical outcomes).
-- **Systemic Dissonance Index:** **1.6111** (Indicating a fundamental negative correlation between expert criteria and populist sentiment).
-- **Fairness Lift:** The proposed DAW mechanism provides a **26.5% improvement** in technical merit alignment over the historical baseline.
+- **Inference Fidelity:** **84.3%** (measured 84.29% on platinum posterior artifacts, n=2686; reconstructed latent variables highly consistent with historical outcomes).
+- **Systemic Dissonance Index:** **1.24** (artifact-measured 1.2389; indicating a fundamental negative correlation between expert criteria and populist sentiment).
+- **Fairness Lift:** The proposed DAW mechanism provides a **27.1% improvement** in technical merit alignment over the historical baseline (absolute equity-delta metric; the paper separately reports **+53.4%** as a relative gain).
 - **Survival Longevity:** Optimized regimes achieved an **infinite survival expectation** for top-30% technical talent within the experimental window.
 
 ## 5. Getting Started
