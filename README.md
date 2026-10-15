@@ -1,39 +1,110 @@
-# MCM_2026
-# The Invisible Hand of the Audience: A Bayesian Inverse Optimization Framework for Mechanism Audit and Design
+# MCM 2026 Problem C — Modeling Fan Votes and Evaluating Voting Rules
 
-## 1. Project Overview
-This repository contains the full industrial-grade pipeline implemented for **MCM 2026 Problem C**. We investigate the meritocracy-populism paradox within the *Dancing with the Stars* (DWTS) ecosystem. 
+**2026 COMAP Mathematical Contest in Modeling (MCM), Problem C · Meritorious Winner (M) · Solo entry**
 
-By treating the competition as a micro-market with asymmetric information, we developed a **Bayesian Inverse Optimization (BIO)** engine to reconstruct latent fan voting distributions from observed elimination outcomes. Furthermore, we proposed and validated a **Dynamic Adaptive Weighting (DAW)** mechanism to resolve systemic evaluative dissonance.
+> **The Invisible Hand of the Audience: A Bayesian Inverse Optimization Framework for Mechanism Audit and Design**
 
-## 2. Core Architecture: The BIO-Pareto Pipeline
-The system is orchestrated via a 6-stage high-performance pipeline:
+This repository contains the modeling and computational work developed for MCM 2026 Problem C, which studies how judges' scores and audience votes jointly affect outcomes in *Dancing with the Stars*. The project estimates unobserved audience support from publicly observed competition outcomes, compares alternative aggregation rules, and explores an adaptive weighting proposal.
 
-*   **Stage 1: Data Forensics (ETL):** Robust Z-score calibration of judge signals across 34 seasons, filtering "ghost data" from eliminated contestants.
-*   **Stage 2: Latent Reconstruction:** A hybrid C++17/Python MCMC engine utilizing OpenMP for 23-core parallel sampling on the probability simplex.
-*   **Stage 3: Multiverse Forensics:** Counterfactual simulations of 34 seasons under alternative regimes (Rank vs. Percent) to quantify regime-dependent survival probabilities.
-*   **Stage 4: Causal Attribution:** Decomposing success into "Talent Alpha" and "Partner Beta" using Hierarchical Linear Mixed-Effects Models (LMM) and non-linear SHAP explanations.
-*   **Stage 5: Mechanism Design:** Multi-objective Pareto optimization to find the optimal authority transfer curve (DAW System).
-*   **Stage 6: Academic Harvesting:** Automated generation of LaTeX deliverables and key research punchlines.
+The code and archived outputs are shared as a record of a contest project, **not** as a fully verified, plug-and-play research package.
 
-## 3. High-Performance Computing (HPC)
-To handle the high-dimensional state space of latent fan preferences, the core sampling kernel is optimized for industrial scalability:
-- **Backend:** C++17 with **Eigen3** for vectorized linear algebra.
-- **Parallelism:** **OpenMP** multi-threading achieving throughput >100,000 samples/sec.
-- **JIT Acceleration:** **Numba**-optimized simulation kernels for real-time grid searching in the Pareto space.
+## Research questions
 
-## 4. Key Numerical Findings
-Our large-scale simulation yielded significant empirical insights:
-- **Inference Fidelity:** **84.3%** (measured 84.29% on platinum posterior artifacts, n=2686; reconstructed latent variables highly consistent with historical outcomes).
-- **Systemic Dissonance Index:** **1.24** (artifact-measured 1.2389; indicating a fundamental negative correlation between expert criteria and populist sentiment).
-- **Fairness Lift:** The proposed DAW mechanism provides a **27.1% improvement** in technical merit alignment over the historical baseline (absolute equity-delta metric; the paper separately reports **+53.4%** as a relative gain).
-- **Survival Longevity:** Optimized regimes achieved an **infinite survival expectation** for top-30% technical talent within the experimental window.
+1. **Latent votes:** What audience-vote patterns are compatible with the observed scores, eliminations, and competition rules?
+2. **Rule comparison:** How might rank-based versus percentage-based aggregation change simulated outcomes?
+3. **Mechanism design:** Can an adaptive weighting rule balance technical scores, audience preferences, and other stated objectives?
 
-## 5. Getting Started
-### Prerequisites
-Ensure your environment meets the specifications in `requirements.txt`. A C++17 compatible compiler (GCC 11+ / Clang 14+) is required for the MCMC kernel.
+The audience vote distribution is not directly observed. Estimates and counterfactual outcomes therefore depend on the specified priors, constraints, and simulation assumptions; they are **not** recovered ground truth or causal effects established from randomized data.
 
-### Execution Sequence
-1. **System Audit:** Verify API contracts and environment stability.
-   ```bash
-   python check_dependencies.py
+## Approach
+
+The implementation is organized into six stages:
+
+| Stage | Purpose | Main code |
+| --- | --- | --- |
+| 1. Data preparation | Parse and clean season-level records; construct model features | `src/etl/` |
+| 2. Latent-vote inference | Bayesian-style constrained sampling with a C++/Python bridge | `src/bridge/`, `src/core/`, `cpp_kernel/` |
+| 3. Rule comparison | Simulate alternative voting rules and examine outcome sensitivity | `src/simulators/`, `src/analysis/` |
+| 4. Attribution analysis | Explore relationships between scores, partners, and modeled outcomes | `src/analysis/` |
+| 5. Weighting-rule design | Evaluate candidate adaptive rules and trade-offs | `src/solvers/` |
+| 6. Report generation | Export selected summaries, tables, and figures | `src/utils/`, `reports/` |
+
+**Technical components:** Python (NumPy, pandas, SciPy, Numba), C++17 (Eigen, OpenMP, pybind11), simulation, statistical modeling, and multi-objective optimization. See `requirements.txt` and `cpp_kernel/CMakeLists.txt` for dependencies.
+
+## Selected artifacts
+
+The repository includes code, configuration, data snapshots, and outputs from previous runs. Some entry points and historical files reflect the original contest environment.
+
+- [Mechanism audit summary (JSON)](reports/mechanism_audit/mechanism_audit_summary.json)
+- [Mechanism audit figures](reports/mechanism_audit/)
+- [Pareto-frontier analysis](reports/final_design/pareto_frontier_analysis.png)
+- [Competition modeling configuration](conf/rules.yaml)
+- [Main stage-oriented pipeline](main_pipeline.py)
+
+![Example Pareto-frontier output](reports/final_design/pareto_frontier_analysis.png)
+
+These are **archived project outputs**, not independently rerun benchmarks. Their interpretation depends on the original parameter settings and experiment definitions; see the code and configuration before citing a number.
+
+## Repository layout
+
+```text
+MCM_2026/
+├── conf/                 # Rules, priors, and input mappings
+├── cpp_kernel/           # C++ sampling extension and CMake build
+├── data/                 # Competition input and intermediate snapshots
+├── src/
+│   ├── etl/              # Data preparation
+│   ├── bridge/           # Python–C++ interface
+│   ├── core/             # Modeling components
+│   ├── simulators/       # Counterfactual simulations
+│   ├── analysis/         # Mechanism and sensitivity analysis
+│   ├── solvers/          # Design / optimization
+│   └── utils/            # Logging and exports
+├── reports/              # Archived figures and summaries
+├── check_dependencies.py
+├── main.py               # Original end-to-end entry point
+├── main_pipeline.py      # Stage-oriented entry point
+└── requirements.txt
+```
+
+## Reproduction notes
+
+The repository was developed in a specific contest-time environment. **A clean-environment end-to-end reproduction has not yet been verified.** In particular, the sampling extension is compiled for a particular Python/platform ABI, and some paths or intermediate files may require preparation.
+
+Recommended starting point on Linux with Python 3.10+ and a C++17 toolchain:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Requires CMake, Eigen3, and an OpenMP-capable compiler.
+cmake -S cpp_kernel -B cpp_kernel/build \
+  -Dpybind11_DIR="$(python -m pybind11 --cmakedir)"
+cmake --build cpp_kernel/build --config Release -j
+
+# Inspect environment and paths before running expensive stages.
+python check_dependencies.py
+python main_pipeline.py --help
+```
+
+For an incremental attempt, review `conf/rules.yaml`, create any missing configured output directories (notably `data/platinum/`), and start with `python main_pipeline.py --stage 1`. Later stages may require substantial CPU time and intermediate datasets produced by earlier stages. The pipeline presently contains hardware-specific 23-thread defaults; adjust them to the machine before a full run.
+
+The checked-in `bin/` extension is a platform-specific build artifact, **not** a portable dependency. Rebuild it where possible.
+
+## Scope and limitations
+
+- Audience preferences are **latent**; the inference depends on modeling assumptions and constraints.
+- Retrospective simulations compare **modeled scenarios**, not experimentally identified causal effects.
+- Metrics from a past run should not be generalized without checking the data split, metric definition, priors, and sensitivity analysis.
+- Some committed intermediate data, figures, and binaries remain from the competition workflow; the repository has not yet undergone a full cleanup or cross-platform reproducibility audit.
+
+## Provenance and paper access
+
+This was a **solo MCM entry** (2026, Problem C; Meritorious Winner, control number **2622651**). AI-assisted tools were used during parts of coding and English-language manuscript preparation; their use does not substitute for independent verification of the modeling claims.
+
+The competition paper is not included here. A copy can be provided privately on request, subject to the competition organizer's publication and sharing rules. Please check the applicable terms before redistributing competition materials or republishing the full paper.
+
+## Status
+
+**Archived contest project; README refreshed for technical review.** Further work would prioritize reproducibility checks, clearer experiment provenance, and separating essential source files from environment-specific artifacts.
